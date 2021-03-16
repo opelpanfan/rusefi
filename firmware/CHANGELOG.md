@@ -27,6 +27,14 @@ All notable user-facing or behavior-altering changes will be documented in this 
 
 ## XXX 2021 Release
 
+## Potato Chip Day 2021 Release
+
+### Added
+ - VAG MQB tachometer CAN integration
+    
+### Fixed
+ - fix error/warning buffer overflow #2456
+
 ## Life in the Cracks 2021 Release
 
 ### Added

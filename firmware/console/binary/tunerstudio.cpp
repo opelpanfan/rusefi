@@ -650,12 +650,13 @@ static void handleGetVersion(TsChannelBase* tsChannel) {
 	tsChannel->sendResponse(TS_CRC, (const uint8_t *) versionBuffer, strlen(versionBuffer) + 1);
 }
 
+#if EFI_TEXT_LOGGING
 static void handleGetText(TsChannelBase* tsChannel) {
 	tsState.textCommandCounter++;
 
 	printOverallStatus(getTimeNowSeconds());
 
-	int outputSize;
+	size_t outputSize;
 	const char* output = swapOutputBuffers(&outputSize);
 #if EFI_SIMULATOR
 			logMsg("get test sending [%d]\r\n", outputSize);
@@ -666,6 +667,7 @@ static void handleGetText(TsChannelBase* tsChannel) {
 			logMsg("sent [%d]\r\n", outputSize);
 #endif
 }
+#endif // EFI_TEXT_LOGGING
 
 static void handleExecuteCommand(TsChannelBase* tsChannel, char *data, int incomingPacketSize) {
 	data[incomingPacketSize] = 0;
@@ -746,9 +748,11 @@ int TunerStudioBase::handleCrcCommand(TsChannelBase* tsChannel, char *data, int 
 		handleTsW(tsChannel, data);
 		break;
 #endif // (EFI_FILE_LOGGING && !HAL_USE_USB_MSD)
+#if EFI_TEXT_LOGGING
 	case TS_GET_TEXT:
 		handleGetText(tsChannel);
 		break;
+#endif // EFI_TEXT_LOGGING
 	case TS_EXECUTE:
 		handleExecuteCommand(tsChannel, data, incomingPacketSize - 1);
 		break;
@@ -868,11 +872,11 @@ int TunerStudioBase::handleCrcCommand(TsChannelBase* tsChannel, char *data, int 
 		break;
 #endif /* ENABLE_PERF_TRACE */
 	case TS_GET_CONFIG_ERROR: {
-		char * configError = getFirmwareError();
+		const char* configError = getFirmwareError();
 #if HW_CHECK_MODE
 		// analog input errors are returned as firmware error in QC mode
 		if (!hasFirmwareError()) {
-			strcpy(configError, "FACTORY_MODE_PLEASE_CONTACT_SUPPORT");
+			strcpy((char*)configError, "FACTORY_MODE_PLEASE_CONTACT_SUPPORT");
 		}
 #endif // HW_CHECK_MODE
 		tsChannel->sendResponse(TS_CRC, reinterpret_cast<const uint8_t*>(configError), strlen(configError));
