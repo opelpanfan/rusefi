@@ -27,12 +27,19 @@ public:
 	// Virtual functions - implement these for your underlying transport
 	virtual void write(const uint8_t* buffer, size_t size) = 0;
 	virtual size_t readTimeout(uint8_t* buffer, size_t size, int timeout) = 0;
-	virtual void flush() = 0;
-	virtual bool isReady() = 0;
+
+	// These functions are optional to implement, not all channels need them
+	virtual void flush() { }
+	virtual bool isConfigured() const { return true; }
+	virtual bool isReady() const { return true; }
+	virtual void stop() { }
 
 	// Base functions that use the above virtual implementation
 	size_t read(uint8_t* buffer, size_t size);
 
+#ifdef TS_CAN_DEVICE
+	virtual	// CAN device needs this function to be virtual for small-packet optimization
+#endif
 	void writeCrcPacket(uint8_t responseCode, const uint8_t* buf, size_t size);
 	void sendResponse(ts_response_format_e mode, const uint8_t * buffer, int size);
 
@@ -48,19 +55,34 @@ private:
 	void writeCrcPacketLarge(uint8_t responseCode, const uint8_t* buf, size_t size);
 };
 
+#if EFI_UNIT_TEST
+struct BaseChannel;
+#endif
+
 struct ts_channel_s : public TsChannelBase {
 	void write(const uint8_t* buffer, size_t size) override;
 	size_t readTimeout(uint8_t* buffer, size_t size, int timeout) override;
-	void flush() override;
-	bool isReady() override;
+	bool isReady() const override;
+	bool isConfigured() const override;
 
-#if !EFI_UNIT_TEST
 	BaseChannel * channel = nullptr;
-#endif
 
 #if TS_UART_DMA_MODE || PRIMARY_UART_DMA_MODE || TS_UART_MODE
 	UARTDriver *uartp = nullptr;
 #endif // TS_UART_DMA_MODE
+};
+
+class BaseChannelTsChannel : public TsChannelBase {
+public:
+	BaseChannelTsChannel(BaseChannel* channel) : m_channel(channel) { }
+
+	void write(const uint8_t* buffer, size_t size) override;
+	size_t readTimeout(uint8_t* buffer, size_t size, int timeout) override;
+	void flush() override;
+	bool isReady() const override;
+
+private:
+	BaseChannel* const m_channel;
 };
 
 #define CRC_VALUE_SIZE 4

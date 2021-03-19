@@ -161,6 +161,16 @@ static void scheduleReboot(void) {
 	chVTSetI(&resetTimer, TIME_MS2I(3000), (vtfunc_t) rebootNow, NULL);
 }
 
+// Returns false if there's an obvious problem with the loaded configuration
+static bool validateConfig() {
+	if (CONFIG(specs.cylindersCount) > minI(INJECTION_PIN_COUNT, IGNITION_PIN_COUNT)) {
+		firmwareError(OBD_PCM_Processor_Fault, "Invalid cylinder count: %d", CONFIG(specs.cylindersCount));
+		return false;
+	}
+
+	return true;
+}
+
 void runRusEfi(void) {
 	efiAssertVoid(CUSTOM_RM_STACK_1, getCurrentRemainingStack() > 512, "init s");
 	assertEngineReference();
@@ -199,17 +209,18 @@ void runRusEfi(void) {
  #endif // IGNORE_FLASH_CONFIGURATION
 #endif /* EFI_INTERNAL_FLASH */
 
-#if HW_CHECK_ALWAYS_STIMULATE
-	// we need a special binary for final assembly check. We cannot afford to require too much software or too many steps
-	// to be executed at the place of assembly
-	enableTriggerStimulator();
-#endif // HW_CHECK_ALWAYS_STIMULATE
-
-
 #if ! EFI_ACTIVE_CONFIGURATION_IN_FLASH
 	// TODO: need to fix this place!!! should be a version of PASS_ENGINE_PARAMETER_SIGNATURE somehow
 	prepareVoidConfiguration(&activeConfiguration);
 #endif /* EFI_ACTIVE_CONFIGURATION_IN_FLASH */
+
+#if EFI_FILE_LOGGING
+	initMmcCard();
+#endif /* EFI_FILE_LOGGING */
+
+#if EFI_USB_SERIAL
+	startUsbConsole();
+#endif
 
 	/**
 	 * Next we should initialize serial port console, it's important to know what's going on
@@ -225,28 +236,33 @@ void runRusEfi(void) {
 	 */
 	initHardware(&sharedLogger);
 
-#if EFI_FILE_LOGGING
-	initMmcCard();
-#endif /* EFI_FILE_LOGGING */
+#if HW_CHECK_ALWAYS_STIMULATE
+	// we need a special binary for final assembly check. We cannot afford to require too much software or too many steps
+	// to be executed at the place of assembly
+	enableTriggerStimulator();
+#endif // HW_CHECK_ALWAYS_STIMULATE
 
-	initStatusLoop();
-	/**
-	 * Now let's initialize actual engine control logic
-	 * todo: should we initialize some? most? controllers before hardware?
-	 */
-	initEngineContoller(&sharedLogger PASS_ENGINE_PARAMETER_SIGNATURE);
-	rememberCurrentConfiguration();
+	// Config could be completely bogus - don't start anything else!
+	if (validateConfig()) {
+		initStatusLoop();
+		/**
+		 * Now let's initialize actual engine control logic
+		 * todo: should we initialize some? most? controllers before hardware?
+		 */
+		initEngineContoller(&sharedLogger PASS_ENGINE_PARAMETER_SIGNATURE);
+		rememberCurrentConfiguration();
 
-#if EFI_PERF_METRICS
-	initTimePerfActions(&sharedLogger);
-#endif
-        
-#if EFI_ENGINE_EMULATOR
-	initEngineEmulator(&sharedLogger PASS_ENGINE_PARAMETER_SIGNATURE);
-#endif
-	startStatusThreads();
+	#if EFI_PERF_METRICS
+		initTimePerfActions(&sharedLogger);
+	#endif
+			
+	#if EFI_ENGINE_EMULATOR
+		initEngineEmulator(&sharedLogger PASS_ENGINE_PARAMETER_SIGNATURE);
+	#endif
+		startStatusThreads();
 
-	runSchedulingPrecisionTestIfNeeded();
+		runSchedulingPrecisionTestIfNeeded();
+	}
 
 	print("Running main loop\r\n");
 	main_loop_started = true;
