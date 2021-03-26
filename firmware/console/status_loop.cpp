@@ -595,7 +595,7 @@ void updateTunerStudioState(TunerStudioOutputChannels *tsOutputChannels DECLARE_
 
 #if EFI_SHAFT_POSITION_INPUT
 	// 248
-	tsOutputChannels->vvtPosition = engine->triggerCentral.getVVTPosition();
+	tsOutputChannels->vvtPosition = engine->triggerCentral.getVVTPosition(0, 0);
 #endif
 
 	// 252
@@ -705,7 +705,8 @@ void updateTunerStudioState(TunerStudioOutputChannels *tsOutputChannels DECLARE_
 #endif /* EFI_VEHICLE_SPEED */
 #endif /* EFI_PROD_CODE */
 
-	tsOutputChannels->fuelConsumptionPerHour = engine->engineState.fuelConsumption.perSecondConsumption;
+	tsOutputChannels->fuelFlowRate = engine->engineState.fuelConsumption.getConsumptionGramPerSecond();
+	tsOutputChannels->totalFuelConsumption = engine->engineState.fuelConsumption.getConsumedGrams();
 
 	tsOutputChannels->warningCounter = engine->engineState.warnings.warningCounter;
 	tsOutputChannels->lastErrorCode = engine->engineState.warnings.lastErrorCode;
