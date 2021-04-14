@@ -15,6 +15,9 @@
 #include "perf_trace.h"
 #include "tooth_logger.h"
 
+#include "hip9011.h"
+#include "engine_ptr.h"
+
 #if EFI_ENGINE_CONTROL
 
 #if EFI_TUNER_STUDIO
@@ -204,6 +207,9 @@ if (engineConfiguration->debugMode == DBG_DWELL_METRIC) {
 #if EFI_SOFTWARE_KNOCK
 	startKnockSampling(event->cylinderNumber);
 #endif
+#if EFI_HIP_9011
+	hip9011_startKnockSampling(event->cylinderNumber, nowNt);
+#endif
 }
 
 static void startDwellByTurningSparkPinHigh(IgnitionEvent *event, IgnitionOutputPin *output) {
@@ -241,6 +247,7 @@ static void startDwellByTurningSparkPinHigh(IgnitionEvent *event, IgnitionOutput
 #if HW_CHECK_SPARK_FSIO
 	enginePins.fsioOutputs[event->cylinderIndex].setValue(1);
 #endif // HW_CHECK_SPARK_FSIO
+    INJECT_ENGINE_REFERENCE(output);
 	output->setHigh();
 }
 

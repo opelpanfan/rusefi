@@ -127,6 +127,7 @@ void InjectorOutputPin::open(efitick_t nowNt DECLARE_ENGINE_PARAMETER_SUFFIX) {
 #if EFI_TOOTH_LOGGER
 	LogTriggerInjectorState(nowNt, true PASS_ENGINE_PARAMETER_SUFFIX);
 #endif // EFI_TOOTH_LOGGER
+		INJECT_ENGINE_REFERENCE(this);
 		setHigh();
 	}
 }
@@ -550,7 +551,7 @@ void initMainEventListener(Logging *sharedLogger DECLARE_ENGINE_PARAMETER_SUFFIX
 #if EFI_PROD_CODE
 	addConsoleActionP("maininfo", (VoidPtr) showMainInfo, engine);
 
-	printMsg(logger, "initMainLoop: %d", currentTimeMillis());
+	scheduleMsg(logger, "initMainLoop: %d", currentTimeMillis());
 #endif
 
 

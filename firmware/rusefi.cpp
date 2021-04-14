@@ -125,6 +125,7 @@
 #include "mpu_util.h"
 #include "tunerstudio.h"
 #include "mmc_card.h"
+#include "mass_storage_init.h"
 #include "trigger_emulator_algo.h"
 
 #if EFI_HD44780_LCD
@@ -201,6 +202,10 @@ void runRusEfi(void) {
 	startUsbConsole();
 #endif
 
+#if HAL_USE_USB_MSD
+	initUsbMsd();
+#endif
+
 	/**
 	 * Next we should initialize serial port console, it's important to know what's going on
 	 */
@@ -209,6 +214,9 @@ void runRusEfi(void) {
 #if EFI_TUNER_STUDIO
 	startTunerStudioConnectivity();
 #endif /* EFI_TUNER_STUDIO */
+
+	// Start hardware serial ports (including bluetooth, if present)
+	startSerialChannels();
 
 	/**
 	 * Initialize hardware drivers
@@ -234,6 +242,9 @@ void runRusEfi(void) {
 		 */
 		initEngineContoller(&sharedLogger PASS_ENGINE_PARAMETER_SIGNATURE);
 
+		// This has to happen after RegisteredOutputPins are init'd: otherwise no change will be detected, and no init will happen
+		rememberCurrentConfiguration(PASS_ENGINE_PARAMETER_SIGNATURE);
+
 	#if EFI_PERF_METRICS
 		initTimePerfActions(&sharedLogger);
 	#endif
@@ -246,7 +257,7 @@ void runRusEfi(void) {
 		runSchedulingPrecisionTestIfNeeded();
 	}
 
-	print("Running main loop\r\n");
+	scheduleMsg(&sharedLogger, "Running main loop");
 	main_loop_started = true;
 	/**
 	 * This loop is the closes we have to 'main loop' - but here we only publish the status. The main logic of engine
