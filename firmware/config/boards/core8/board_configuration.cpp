@@ -1,9 +1,9 @@
 /**
- * @file boards/proteus/board_configuration.cpp
+ * @file boards/core8/board_configuration.cpp
  *
- * @brief Configuration defaults for the Proteus board
+ * @brief Configuration defaults for the core8 board
  *
- * @author Matthew Kennedy, (c) 2019
+ * @author Ben Brazdziunas, (c) 2021
  */
 
 #include "engine_configuration.h"
@@ -14,33 +14,33 @@
 EXTERN_ENGINE;
 
 static const brain_pin_e injPins[] = {
-	GPIOD_7,
-	GPIOG_9,
-	GPIOG_10,
-	GPIOG_11,
-	GPIOG_12,
-	GPIOG_13,
-	GPIOG_14,
-	GPIOB_4,
-	GPIOB_5,
-	GPIOB_6,
-	GPIOB_7,
-	GPIOB_8
+	GPIOB_14,
+	GPIOB_15,
+	GPIOD_8,
+	GPIOD_9,
+	GPIOD_10,
+	GPIOD_11,
+	GPIOD_12,
+	GPIOD_13,
+	GPIO_UNASSIGNED,
+	GPIO_UNASSIGNED,
+	GPIO_UNASSIGNED,
+	GPIO_UNASSIGNED
 };
 
 static const brain_pin_e ignPins[] = {
-	GPIOD_4,
-	GPIOD_3,
-	GPIOC_9,
-	GPIOC_8,
-	GPIOC_7,
-	GPIOG_8,
-	GPIOG_7,
-	GPIOG_6,
-	GPIOG_5,
-	GPIOG_4,
-	GPIOG_3,
-	GPIOG_2,
+	GPIOE_7,
+	GPIOE_8,
+	GPIOE_9,
+	GPIOE_10,
+	GPIOE_11,
+	GPIOE_12,
+	GPIOE_13,
+	GPIOE_14,
+	GPIO_UNASSIGNED,
+	GPIO_UNASSIGNED,
+	GPIO_UNASSIGNED,
+	GPIO_UNASSIGNED
 };
 
 static void setInjectorPins() {
@@ -57,9 +57,8 @@ void setSdCardConfigurationOverrides(void) {
 }
 
 static void setLedPins() {
-	// PE3 is error LED, configured in board.mk
 	CONFIG(communicationLedPin) = GPIO_UNASSIGNED;
-	CONFIG(runningLedPin) = GPIO_UNASSIGNED;
+	CONFIG(runningLedPin) = GPIOA_15;
 	CONFIG(warningLedPin) = GPIO_UNASSIGNED;
 }
 
@@ -67,7 +66,7 @@ static void setupVbatt() {
 	// 5.6k high side/10k low side = 1.56 ratio divider
 	engineConfiguration->analogInputDividerCoefficient = 1.56f;
 
-	// 82k high side/10k low side = 9.2
+	// 6.34k high side/1k low side = 9.2
 	engineConfiguration->vbattDividerCoeff = (6.34f / 1.0f);
 
 	// Battery sense on PA7
@@ -108,18 +107,9 @@ static void setupEtb() {
 }
 
 static void setupDefaultSensorInputs() {
-	// trigger inputs
-#if VR_HW_CHECK_MODE
-	// set_trigger_input_pin 0 PE7
-	// GPIOE_7:  "VR 1"
-	engineConfiguration->triggerInputPins[0] = GPIOE_7;
-	// GPIOE_8:  "VR 2"
-	engineConfiguration->camInputs[0] = GPIOE_8;
-#else
-	// Digital channel 1 as default - others not set
-	engineConfiguration->triggerInputPins[0] = GPIO_UNASSIGNED;
-	engineConfiguration->camInputs[0] = GPIO_UNASSIGNED;
-#endif
+
+	engineConfiguration->triggerInputPins[0] = GPIOB_8;
+	engineConfiguration->camInputs[0] = GPIOB_9;
 
 	engineConfiguration->triggerInputPins[1] = GPIO_UNASSIGNED;
 	engineConfiguration->triggerInputPins[2] = GPIO_UNASSIGNED;
@@ -157,8 +147,8 @@ void setBoardConfigOverrides(void) {
 	engineConfiguration->clt.config.bias_resistor = 2490;
 	engineConfiguration->iat.config.bias_resistor = 2490;
 
-	engineConfiguration->canTxPin = GPIO_UNASSIGNED;
-	engineConfiguration->canRxPin = GPIO_UNASSIGNED;
+	engineConfiguration->canTxPin = GPIOB_13;
+	engineConfiguration->canRxPin = GPIOB_12;
 }
 
 void setPinConfigurationOverrides(void) {
@@ -195,22 +185,16 @@ void setBoardDefaultConfiguration(void) {
 	engineConfiguration->useOnlyRisingEdgeForTrigger = true;
 	setAlgorithm(LM_SPEED_DENSITY PASS_CONFIG_PARAMETER_SUFFIX);
 
-	engineConfiguration->specs.cylindersCount = 8;
-	engineConfiguration->specs.firingOrder = FO_1_8_7_2_6_5_4_3;
+	engineConfiguration->specs.cylindersCount = 4;
+	engineConfiguration->specs.firingOrder = FO_1_4_3_2;
 
-	CONFIG(enableSoftwareKnock) = false;
+	//CONFIG(enableSoftwareKnock) = false;
 
 	engineConfiguration->ignitionMode = IM_INDIVIDUAL_COILS;
-	engineConfiguration->crankingInjectionMode = IM_SIMULTANEOUS;
-	engineConfiguration->injectionMode = IM_SIMULTANEOUS;
+	engineConfiguration->crankingInjectionMode = IM_SEQUENTIAL;
+	engineConfiguration->injectionMode = IM_SEQUENTIAL;
 
-	CONFIG(mainRelayPin) = GPIO_UNASSIGNED;//  "Lowside 13"    # pin 10/black35
-	CONFIG(fanPin) = GPIO_UNASSIGNED;//  "Lowside 15"    # pin 12/black35
-	CONFIG(fuelPumpPin) = GPIO_UNASSIGNED;//  "Lowside 16"    # pin 23/black35
-
-	// If we're running as hardware CI, borrow a few extra pins for that
-#ifdef HARDWARE_CI
-	engineConfiguration->triggerSimulatorPins[0] = GPIOG_3;
-	engineConfiguration->triggerSimulatorPins[1] = GPIOG_2;
-#endif
+	// CONFIG(mainRelayPin) = GPIO_UNASSIGNED;//  "Lowside 13"    # pin 10/black35
+	// CONFIG(fanPin) = GPIO_UNASSIGNED;//  "Lowside 15"    # pin 12/black35
+	// CONFIG(fuelPumpPin) = GPIO_UNASSIGNED;//  "Lowside 16"    # pin 23/black35
 }
