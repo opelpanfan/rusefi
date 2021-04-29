@@ -108,7 +108,7 @@ typedef enum {
 
 	HELLEN72_ETB = 33,
 
-	UNUSED_34 = 34,
+	HELLEN_NA6 = 34,
 
 	CAMARO_4 = ET_CAMARO,
 
@@ -1013,6 +1013,7 @@ typedef enum __attribute__ ((__packed__)) {
 	GPPWM_IgnLoad = 5,
 	GPPWM_AuxTemp1 = 6,
 	GPPWM_AuxTemp2 = 7,
+	GPPWM_Zero = 8,
 } gppwm_channel_e;
 
 typedef enum __attribute__ ((__packed__)) {

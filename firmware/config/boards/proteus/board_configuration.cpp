@@ -58,9 +58,9 @@ void setSdCardConfigurationOverrides(void) {
 
 static void setLedPins() {
 	// PE3 is error LED, configured in board.mk
-	CONFIG(communicationLedPin) = GPIO_UNASSIGNED;
-	CONFIG(runningLedPin) = GPIO_UNASSIGNED;
-	CONFIG(warningLedPin) = GPIO_UNASSIGNED;
+	CONFIG(communicationLedPin) = GPIOE_4;
+	CONFIG(runningLedPin) = GPIOE_5;
+	CONFIG(warningLedPin) = GPIOE_6;
 }
 
 static void setupVbatt() {
@@ -68,10 +68,10 @@ static void setupVbatt() {
 	engineConfiguration->analogInputDividerCoefficient = 1.56f;
 
 	// 82k high side/10k low side = 9.2
-	engineConfiguration->vbattDividerCoeff = (6.34f / 1.0f);
+	engineConfiguration->vbattDividerCoeff = (92.0f / 10.0f);
 
 	// Battery sense on PA7
-	engineConfiguration->vbattAdcChannel = EFI_ADC_0;
+	engineConfiguration->vbattAdcChannel = EFI_ADC_7;
 
 	engineConfiguration->adcVcc = 3.3f;
 }
@@ -85,21 +85,21 @@ static void setupEtb() {
 
 	// Throttle #1
 	// PWM pin
-	engineConfiguration->etbIo[0].controlPin1 = GPIO_UNASSIGNED;
+	engineConfiguration->etbIo[0].controlPin1 = GPIOD_12;
 	// DIR pin
-	engineConfiguration->etbIo[0].directionPin1 = GPIO_UNASSIGNED;
+	engineConfiguration->etbIo[0].directionPin1 = GPIOD_10;
 	// Disable pin
-	engineConfiguration->etbIo[0].disablePin = GPIO_UNASSIGNED;
+	engineConfiguration->etbIo[0].disablePin = GPIOD_11;
 	// Unused
 	engineConfiguration->etbIo[0].directionPin2 = GPIO_UNASSIGNED;
 
 	// Throttle #2
 	// PWM pin
-	engineConfiguration->etbIo[1].controlPin1 = GPIO_UNASSIGNED;
+	engineConfiguration->etbIo[1].controlPin1 = GPIOD_13;
 	// DIR pin
-	engineConfiguration->etbIo[1].directionPin1 = GPIO_UNASSIGNED;
+	engineConfiguration->etbIo[1].directionPin1 = GPIOD_9;
 	// Disable pin
-	engineConfiguration->etbIo[1].disablePin = GPIO_UNASSIGNED;
+	engineConfiguration->etbIo[1].disablePin = GPIOD_8;
 	// Unused
 	engineConfiguration->etbIo[1].directionPin2 = GPIO_UNASSIGNED;
 
@@ -117,7 +117,7 @@ static void setupDefaultSensorInputs() {
 	engineConfiguration->camInputs[0] = GPIOE_8;
 #else
 	// Digital channel 1 as default - others not set
-	engineConfiguration->triggerInputPins[0] = GPIO_UNASSIGNED;
+	engineConfiguration->triggerInputPins[0] = GPIOC_6;
 	engineConfiguration->camInputs[0] = GPIO_UNASSIGNED;
 #endif
 
@@ -142,10 +142,13 @@ static void setupDefaultSensorInputs() {
 
 static void setupSdCard() {
 
-	engineConfiguration->is_enabled_spi_3 = false;
-	engineConfiguration->spi3sckPin = GPIO_UNASSIGNED;
-	engineConfiguration->spi3misoPin = GPIO_UNASSIGNED;
-	engineConfiguration->spi3mosiPin = GPIO_UNASSIGNED;
+	engineConfiguration->sdCardSpiDevice = SPI_DEVICE_3;
+	engineConfiguration->sdCardCsPin = GPIOD_2;
+
+	engineConfiguration->is_enabled_spi_3 = true;
+	engineConfiguration->spi3sckPin = GPIOC_10;
+	engineConfiguration->spi3misoPin = GPIOC_11;
+	engineConfiguration->spi3mosiPin = GPIOC_12;
 }
 
 void setBoardConfigOverrides(void) {
@@ -154,11 +157,14 @@ void setBoardConfigOverrides(void) {
 	setLedPins();
 	setupVbatt();
 
-	engineConfiguration->clt.config.bias_resistor = 2490;
-	engineConfiguration->iat.config.bias_resistor = 2490;
+	engineConfiguration->clt.config.bias_resistor = 2700;
+	engineConfiguration->iat.config.bias_resistor = 2700;
 
-	engineConfiguration->canTxPin = GPIO_UNASSIGNED;
-	engineConfiguration->canRxPin = GPIO_UNASSIGNED;
+	engineConfiguration->canTxPin = GPIOD_1;
+	engineConfiguration->canRxPin = GPIOD_0;
+
+	engineConfiguration->lps25BaroSensorScl = GPIOB_10;
+	engineConfiguration->lps25BaroSensorSda = GPIOB_11;
 }
 
 void setPinConfigurationOverrides(void) {
@@ -184,7 +190,7 @@ void setBoardDefaultConfiguration(void) {
 	setInjectorPins();
 	setIgnitionPins();
 
-	engineConfiguration->isSdCardEnabled = false;
+	engineConfiguration->isSdCardEnabled = true;
 
 	// "required" hardware is done - set some reasonable defaults
 	setupDefaultSensorInputs();
@@ -198,15 +204,15 @@ void setBoardDefaultConfiguration(void) {
 	engineConfiguration->specs.cylindersCount = 8;
 	engineConfiguration->specs.firingOrder = FO_1_8_7_2_6_5_4_3;
 
-	CONFIG(enableSoftwareKnock) = false;
+	CONFIG(enableSoftwareKnock) = true;
 
 	engineConfiguration->ignitionMode = IM_INDIVIDUAL_COILS;
 	engineConfiguration->crankingInjectionMode = IM_SIMULTANEOUS;
 	engineConfiguration->injectionMode = IM_SIMULTANEOUS;
 
-	CONFIG(mainRelayPin) = GPIO_UNASSIGNED;//  "Lowside 13"    # pin 10/black35
-	CONFIG(fanPin) = GPIO_UNASSIGNED;//  "Lowside 15"    # pin 12/black35
-	CONFIG(fuelPumpPin) = GPIO_UNASSIGNED;//  "Lowside 16"    # pin 23/black35
+	CONFIG(mainRelayPin) = GPIOB_9;//  "Lowside 13"    # pin 10/black35
+	CONFIG(fanPin) = GPIOE_1;//  "Lowside 15"    # pin 12/black35
+	CONFIG(fuelPumpPin) = GPIOE_2;//  "Lowside 16"    # pin 23/black35
 
 	// If we're running as hardware CI, borrow a few extra pins for that
 #ifdef HARDWARE_CI
