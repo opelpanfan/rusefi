@@ -1,7 +1,7 @@
 #include "global.h"
 #include "rusefi_enums.h"
 #include "rusefi_hw_enums.h"
-// was generated automatically by rusEfi tool  from rusefi_hw_enums.h // was generated automatically by rusEfi tool  from rusefi_enums.h // by enum2string.jar tool on Sat Apr 10 23:21:19 EDT 2021
+// was generated automatically by rusEFI tool  from rusefi_hw_enums.h // was generated automatically by rusEFI tool  from rusefi_enums.h // by enum2string.jar tool on Tue May 04 14:13:02 UTC 2021
 // see also gen_config_and_enums.bat
 
 
@@ -483,8 +483,6 @@ case DBG_16:
   return "DBG_16";
 case DBG_34:
   return "DBG_34";
-case DBG_48:
-  return "DBG_48";
 case DBG_ALTERNATOR_PID:
   return "DBG_ALTERNATOR_PID";
 case DBG_ANALOG_INPUTS:
@@ -551,6 +549,8 @@ case DBG_LAUNCH:
   return "DBG_LAUNCH";
 case DBG_LOGIC_ANALYZER:
   return "DBG_LOGIC_ANALYZER";
+case DBG_LUA:
+  return "DBG_LUA";
 case DBG_MAP:
   return "DBG_MAP";
 case DBG_METRICS:
@@ -671,6 +671,22 @@ case GY6_139QMB:
   return "GY6_139QMB";
 case HELLEN72_ETB:
   return "HELLEN72_ETB";
+case HELLEN_121_NISSAN:
+  return "HELLEN_121_NISSAN";
+case HELLEN_121_VAG:
+  return "HELLEN_121_VAG";
+case HELLEN_128_MERCEDES:
+  return "HELLEN_128_MERCEDES";
+case HELLEN_134_BMW:
+  return "HELLEN_134_BMW";
+case HELLEN_154_VAG:
+  return "HELLEN_154_VAG";
+case HELLEN_55_BMW:
+  return "HELLEN_55_BMW";
+case HELLEN_88_BMW:
+  return "HELLEN_88_BMW";
+case HELLEN_NA6:
+  return "HELLEN_NA6";
 case HELLEN_NB2:
   return "HELLEN_NB2";
 case HONDA_600:
@@ -777,10 +793,6 @@ case TOYOTA_2JZ_GTE_VVTi:
   return "TOYOTA_2JZ_GTE_VVTi";
 case TOYOTA_JZS147:
   return "TOYOTA_JZS147";
-case UNUSED_34:
-  return "UNUSED_34";
-case UNUSED_36:
-  return "UNUSED_36";
 case VAG_18_TURBO:
   return "VAG_18_TURBO";
 case VW_ABA:
@@ -840,6 +852,8 @@ case GPPWM_Map:
   return "GPPWM_Map";
 case GPPWM_Tps:
   return "GPPWM_Tps";
+case GPPWM_Zero:
+  return "GPPWM_Zero";
   }
  return NULL;
 }
