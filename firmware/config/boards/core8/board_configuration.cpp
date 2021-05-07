@@ -14,14 +14,14 @@
 EXTERN_ENGINE;
 
 static const brain_pin_e injPins[] = {
-	GPIOB_14,
-	GPIOB_15,
-	GPIOD_8,
-	GPIOD_9,
-	GPIOD_10,
-	GPIOD_11,
-	GPIOD_12,
-	GPIOD_13,
+	GPIOE_15,
+	GPIOE_14,
+	GPIOE_13,
+	GPIOE_12,
+	GPIOE_11,
+	GPIOE_10,
+	GPIOE_9,
+	GPIOE_8,
 	GPIO_UNASSIGNED,
 	GPIO_UNASSIGNED,
 	GPIO_UNASSIGNED,
@@ -29,14 +29,14 @@ static const brain_pin_e injPins[] = {
 };
 
 static const brain_pin_e ignPins[] = {
-	GPIOE_7,
-	GPIOE_8,
-	GPIOE_9,
-	GPIOE_10,
-	GPIOE_11,
-	GPIOE_12,
-	GPIOE_13,
-	GPIOE_14,
+	GPIOD_12,
+	GPIOD_13,
+	GPIOB_15,
+	GPIOB_14,
+	GPIOD_8,
+	GPIOD_9,
+	GPIOD_11,
+	GPIOD_10,
 	GPIO_UNASSIGNED,
 	GPIO_UNASSIGNED,
 	GPIO_UNASSIGNED,
@@ -58,8 +58,8 @@ void setSdCardConfigurationOverrides(void) {
 
 static void setLedPins() {
 	CONFIG(communicationLedPin) = GPIO_UNASSIGNED;
-	CONFIG(runningLedPin) = GPIOA_15;
-	CONFIG(warningLedPin) = GPIO_UNASSIGNED;
+	CONFIG(runningLedPin) = GPIOC_11;
+	CONFIG(warningLedPin) = GPIOC_12;
 }
 
 static void setupVbatt() {
@@ -108,26 +108,26 @@ static void setupEtb() {
 
 static void setupDefaultSensorInputs() {
 
-	engineConfiguration->triggerInputPins[0] = GPIOB_8;
-	engineConfiguration->camInputs[0] = GPIOB_9;
+	engineConfiguration->triggerInputPins[0] = GPIOC_13;
+	engineConfiguration->camInputs[0] = GPIOE_6;
 
 	engineConfiguration->triggerInputPins[1] = GPIO_UNASSIGNED;
 	engineConfiguration->triggerInputPins[2] = GPIO_UNASSIGNED;
 
 	// CLT = Analog Temp 3 = PB0
-	engineConfiguration->clt.adcChannel = EFI_ADC_8;
+	engineConfiguration->clt.adcChannel = EFI_ADC_2;
 
 	// IAT = Analog Temp 2 = PC5
-	engineConfiguration->iat.adcChannel = EFI_ADC_15;
+	engineConfiguration->iat.adcChannel = EFI_ADC_3;
 
 	// TPS = Analog volt 2 = PC1
-	engineConfiguration->tps1_1AdcChannel = EFI_ADC_11;
+	engineConfiguration->tps1_1AdcChannel = EFI_ADC_1;
 
 	// MAP = Analog volt 1 = PC0
-	engineConfiguration->map.sensor.hwChannel = EFI_ADC_10;
+	engineConfiguration->map.sensor.hwChannel = EFI_ADC_8;
 
 	// pin #28 WBO AFR "Analog Volt 10"
-	engineConfiguration->afr.hwChannel = EFI_ADC_5;
+	engineConfiguration->afr.hwChannel = EFI_ADC_4;
 }
 
 static void setupSdCard() {
@@ -147,8 +147,8 @@ void setBoardConfigOverrides(void) {
 	engineConfiguration->clt.config.bias_resistor = 2490;
 	engineConfiguration->iat.config.bias_resistor = 2490;
 
-	engineConfiguration->canTxPin = GPIOB_13;
-	engineConfiguration->canRxPin = GPIOB_12;
+	engineConfiguration->canTxPin = GPIOD_1;
+	engineConfiguration->canRxPin = GPIOD_0;
 }
 
 void setPinConfigurationOverrides(void) {
