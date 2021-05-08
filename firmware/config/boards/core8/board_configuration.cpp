@@ -14,14 +14,14 @@
 EXTERN_ENGINE;
 
 static const brain_pin_e injPins[] = {
-	GPIOB_14,
-	GPIOB_15,
-	GPIOD_8,
-	GPIOD_9,
-	GPIOD_10,
-	GPIOD_11,
-	GPIOD_12,
-	GPIOD_13,
+	GPIO_UNASSIGNED,
+	GPIO_UNASSIGNED,
+	GPIO_UNASSIGNED,
+	GPIO_UNASSIGNED,
+	GPIO_UNASSIGNED,
+	GPIO_UNASSIGNED,
+	GPIO_UNASSIGNED,
+	GPIO_UNASSIGNED,
 	GPIO_UNASSIGNED,
 	GPIO_UNASSIGNED,
 	GPIO_UNASSIGNED,
@@ -29,14 +29,14 @@ static const brain_pin_e injPins[] = {
 };
 
 static const brain_pin_e ignPins[] = {
-	GPIOE_7,
-	GPIOE_8,
-	GPIOE_9,
-	GPIOE_10,
-	GPIOE_11,
-	GPIOE_12,
-	GPIOE_13,
-	GPIOE_14,
+	GPIO_UNASSIGNED,
+	GPIO_UNASSIGNED,
+	GPIO_UNASSIGNED,
+	GPIO_UNASSIGNED,
+	GPIO_UNASSIGNED,
+	GPIO_UNASSIGNED,
+	GPIO_UNASSIGNED,
+	GPIO_UNASSIGNED,
 	GPIO_UNASSIGNED,
 	GPIO_UNASSIGNED,
 	GPIO_UNASSIGNED,
@@ -57,9 +57,9 @@ void setSdCardConfigurationOverrides(void) {
 }
 
 static void setLedPins() {
-	CONFIG(communicationLedPin) = GPIO_UNASSIGNED;
-	CONFIG(runningLedPin) = GPIOA_15;
-	CONFIG(warningLedPin) = GPIO_UNASSIGNED;
+	CONFIG(communicationLedPin) = GPIOG_12;
+	CONFIG(runningLedPin) = GPIOG_11;
+	CONFIG(warningLedPin) = GPIOG_10;
 }
 
 static void setupVbatt() {
@@ -108,26 +108,34 @@ static void setupEtb() {
 
 static void setupDefaultSensorInputs() {
 
-	engineConfiguration->triggerInputPins[0] = GPIOB_8;
-	engineConfiguration->camInputs[0] = GPIOB_9;
+	engineConfiguration->triggerInputPins[0] = GPIOE_2;
+	engineConfiguration->camInputs[0] = GPIOE_3;
 
 	engineConfiguration->triggerInputPins[1] = GPIO_UNASSIGNED;
 	engineConfiguration->triggerInputPins[2] = GPIO_UNASSIGNED;
 
-	// CLT = Analog Temp 3 = PB0
-	engineConfiguration->clt.adcChannel = EFI_ADC_8;
+	engineConfiguration->useStepperIdle = false;
+	engineConfiguration->idle.stepperDirectionPin = GPIO_UNASSIGNED;
+	engineConfiguration->idle.stepperStepPin = GPIO_UNASSIGNED;
+	engineConfiguration->stepperEnablePin = GPIO_UNASSIGNED;
+	
+	engineConfiguration->fuelPumpPin = GPIO_UNASSIGNED;
+	engineConfiguration->mainRelayPin = GPIO_UNASSIGNED;
 
-	// IAT = Analog Temp 2 = PC5
-	engineConfiguration->iat.adcChannel = EFI_ADC_15;
+	// // CLT = Analog Temp 3 = PB0
+	// engineConfiguration->clt.adcChannel = EFI_ADC_8;
 
-	// TPS = Analog volt 2 = PC1
-	engineConfiguration->tps1_1AdcChannel = EFI_ADC_11;
+	// // IAT = Analog Temp 2 = PC5
+	// engineConfiguration->iat.adcChannel = EFI_ADC_15;
 
-	// MAP = Analog volt 1 = PC0
-	engineConfiguration->map.sensor.hwChannel = EFI_ADC_10;
+	// // TPS = Analog volt 2 = PC1
+	// engineConfiguration->tps1_1AdcChannel = EFI_ADC_11;
 
-	// pin #28 WBO AFR "Analog Volt 10"
-	engineConfiguration->afr.hwChannel = EFI_ADC_5;
+	// // MAP = Analog volt 1 = PC0
+	// engineConfiguration->map.sensor.hwChannel = EFI_ADC_10;
+
+	// // pin #28 WBO AFR "Analog Volt 10"
+	// engineConfiguration->afr.hwChannel = EFI_ADC_5;
 }
 
 static void setupSdCard() {
@@ -147,8 +155,8 @@ void setBoardConfigOverrides(void) {
 	engineConfiguration->clt.config.bias_resistor = 2490;
 	engineConfiguration->iat.config.bias_resistor = 2490;
 
-	engineConfiguration->canTxPin = GPIOB_13;
-	engineConfiguration->canRxPin = GPIOB_12;
+	engineConfiguration->canTxPin = GPIO_UNASSIGNED;
+	engineConfiguration->canRxPin = GPIO_UNASSIGNED;
 }
 
 void setPinConfigurationOverrides(void) {
@@ -180,13 +188,19 @@ void setBoardDefaultConfiguration(void) {
 	setupDefaultSensorInputs();
 
 	// Some sensible defaults for other options
-	setOperationMode(engineConfiguration, FOUR_STROKE_CRANK_SENSOR);
+	setOperationMode(engineConfiguration, FOUR_STROKE_CAM_SENSOR);
 	engineConfiguration->trigger.type = TT_TOOTHED_WHEEL_60_2;
 	engineConfiguration->useOnlyRisingEdgeForTrigger = true;
 	setAlgorithm(LM_SPEED_DENSITY PASS_CONFIG_PARAMETER_SUFFIX);
 
 	engineConfiguration->specs.cylindersCount = 4;
-	engineConfiguration->specs.firingOrder = FO_1_4_3_2;
+	engineConfiguration->specs.firingOrder = FO_1_3_4_2;
+	
+	engineConfiguration->specs.displacement = 2;
+	engineConfiguration->injector.flow = 560;
+	engineConfiguration->cranking.rpm = 400;
+	engineConfiguration->rpmHardLimit = 6500;
+
 
 	//CONFIG(enableSoftwareKnock) = false;
 
@@ -197,4 +211,8 @@ void setBoardDefaultConfiguration(void) {
 	// CONFIG(mainRelayPin) = GPIO_UNASSIGNED;//  "Lowside 13"    # pin 10/black35
 	// CONFIG(fanPin) = GPIO_UNASSIGNED;//  "Lowside 15"    # pin 12/black35
 	// CONFIG(fuelPumpPin) = GPIO_UNASSIGNED;//  "Lowside 16"    # pin 23/black35
+
+	
+	engineConfiguration->canReadEnabled = false;
+	engineConfiguration->canWriteEnabled = false;
 }

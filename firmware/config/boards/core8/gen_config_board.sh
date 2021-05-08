@@ -18,7 +18,7 @@ ROOT=../../../
 
 echo "BOARDNAME=${BOARDNAME} SHORT_BOARDNAME=${SHORT_BOARDNAME}"
 
-bash ${ROOT}gen_signature.sh ${SHORT_BOARDNAME}
+bash gen_signature.sh ${SHORT_BOARDNAME}
 
 # work in progress: migrating to rusefi_${BUNDLE_NAME}.txt
 java.exe -DSystemOut.name=gen_config_board \
@@ -30,13 +30,13 @@ java.exe -DSystemOut.name=gen_config_board \
 	-cache_zip_file ${ROOT}tunerstudio/generated/cache.zip \
 	-firing_order ${ROOT}controllers/algo/firing_order.h \
 	-ts_output_name generated/rusefi_${SHORT_BOARDNAME}.ini \
-	-signature ${ROOT}tunerstudio/generated/signature_${SHORT_BOARDNAME}.txt \
+	-signature signature_${SHORT_BOARDNAME}.txt \
 	-signature_destination ${ROOT}controllers/generated/signature_${SHORT_BOARDNAME}.h \
 	-enumInputFile ${ROOT}controllers/algo/rusefi_enums.h \
 	-enumInputFile ${ROOT}controllers/algo/rusefi_hw_enums.h \
 	-board ${BOARDNAME} \
- 	-prepend ${ROOT}config/boards/${BOARDNAME}/prefix.txt \
-	-prepend ${ROOT}config/boards/${BOARDNAME}/prepend.txt
+ 	-prepend prefix.txt \
+	-prepend prepend.txt
 
 [ $? -eq 0 ] || { echo "ERROR generating TunerStudio config for ${BOARDNAME}"; exit 1; }
 
