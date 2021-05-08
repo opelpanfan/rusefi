@@ -112,7 +112,7 @@ typedef enum {
 
 	CAMARO_4 = ET_CAMARO,
 
-	UNUSED_36 = 36,
+	HELLEN_128_MERCEDES = ET_HELLEN_128_MERCEDES,
 
 	MRE_SUBARU_EJ18 = ET_MRE_SUBARU_EJ18,
 
@@ -192,6 +192,14 @@ typedef enum {
 	HELLEN_NB2 = ET_HELLEN_NB2,
 
 	SUBARUEG33_DEFAULTS = 70,
+
+	HELLEN_121_VAG = ET_HELLEN_121_VAG,
+	HELLEN_121_NISSAN = ET_HELLEN_121_NISSAN,
+	HELLEN_55_BMW = ET_HELLEN_55_BMW,
+	HELLEN_88_BMW = ET_HELLEN_88_BMW,
+	HELLEN_134_BMW = ET_HELLEN_134_BMW,
+	HELLEN_154_VAG = ET_HELLEN_154_VAG,
+
 
 	/**
 	 * this configuration has as few pins configured as possible
@@ -390,7 +398,7 @@ typedef enum {
 	TT_UNUSED = 58, // this is used if we want to iterate over all trigger types
 
 	Force_4_bytes_size_trigger_type = ENUM_32_BITS,
-} trigger_type_e;
+} trigger_type_e; // TriggerProcessor.java has this "trigger_type_e" name hard-coded!
 
 typedef enum {
 	ADC_OFF = 0,
@@ -787,7 +795,7 @@ typedef enum {
 	DBG_LOGIC_ANALYZER = 45,
 	DBG_RUSEFI_WIDEBAND = 46,
 	DBG_TCU = 47,
-	DBG_48 = 48,
+	DBG_LUA = 48,
 
 	Force_4_bytes_size_debug_mode_e = ENUM_32_BITS,
 } debug_mode_e;

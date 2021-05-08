@@ -249,22 +249,9 @@ void setLambdaMap(lambda_table_t table, float value) {
 	}
 }
 
-// todo: make this a template
-void setMap(fuel_table_t table, float value) {
-	for (int l = 0; l < FUEL_LOAD_COUNT; l++) {
-		for (int rpmIndex = 0; rpmIndex < FUEL_RPM_COUNT; rpmIndex++) {
-			table[l][rpmIndex] = value;
-		}
-	}
-}
-
 void setWholeIgnitionIatCorr(float value DECLARE_CONFIG_PARAMETER_SUFFIX) {
-#if (IGN_LOAD_COUNT == FUEL_LOAD_COUNT) && (IGN_RPM_COUNT == FUEL_RPM_COUNT)
 	// todo: make setMap a template
-	setMap(config->ignitionIatCorrTable, value);
-#else
-	UNUSED(value);
-#endif
+	setTable(config->ignitionIatCorrTable, value);
 }
 
 void setFuelTablesLoadBin(float minValue, float maxValue DECLARE_CONFIG_PARAMETER_SUFFIX) {
@@ -792,8 +779,6 @@ static void setDefaultEngineConfiguration(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 
 	initTemperatureCurve(IAT_FUEL_CORRECTION_CURVE, 1);
 
-	engineConfiguration->tachPulseDuractionMs = 4;
-
 	engineConfiguration->auxPid[0].minValue = 10;
 	engineConfiguration->auxPid[0].maxValue = 90;
 
@@ -847,10 +832,8 @@ static void setDefaultEngineConfiguration(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 
 	setDefaultVETable(PASS_ENGINE_PARAMETER_SIGNATURE);
 
-#if (IGN_LOAD_COUNT == FUEL_LOAD_COUNT) && (IGN_RPM_COUNT == FUEL_RPM_COUNT)
-	// todo: make setMap a template
-	setMap(config->injectionPhase, -180);
-#endif
+	setTable(config->injectionPhase, -180.0f);
+
 	setRpmTableBin(config->injPhaseRpmBins, FUEL_RPM_COUNT);
 	setFuelTablesLoadBin(10, 160 PASS_CONFIG_PARAMETER_SUFFIX);
 	setDefaultIatTimingCorrection(PASS_ENGINE_PARAMETER_SIGNATURE);
@@ -1261,7 +1244,6 @@ void resetConfigurationExt(configuration_callback_t boardCallback, engine_type_e
 	case TEST_ISSUE_366_RISE:
 		setTestEngineIssue366rise(PASS_CONFIG_PARAMETER_SIGNATURE);
 		break;
-	case UNUSED_36:
 	case TEST_ISSUE_898:
 		setIssue898(PASS_CONFIG_PARAMETER_SIGNATURE);
 		break;
@@ -1332,6 +1314,13 @@ void resetConfigurationExt(configuration_callback_t boardCallback, engine_type_e
 	case HELLEN72_ETB:
 		setHellen72etb(PASS_CONFIG_PARAMETER_SIGNATURE);
 		break;
+	case HELLEN_128_MERCEDES:
+	case HELLEN_121_VAG:
+	case HELLEN_121_NISSAN:
+	case HELLEN_55_BMW:
+	case HELLEN_88_BMW:
+	case HELLEN_134_BMW:
+	case HELLEN_154_VAG:
 	case HELLEN_NA6:
 		setHellenNA6(PASS_CONFIG_PARAMETER_SIGNATURE);
 		break;
