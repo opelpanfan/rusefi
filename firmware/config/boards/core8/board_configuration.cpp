@@ -57,9 +57,9 @@ void setSdCardConfigurationOverrides(void) {
 }
 
 static void setLedPins() {
-	CONFIG(communicationLedPin) = GPIOG_12;
-	CONFIG(runningLedPin) = GPIOG_11;
-	CONFIG(warningLedPin) = GPIOG_10;
+	CONFIG(communicationLedPin) = GPIOC_12;
+	CONFIG(runningLedPin) = GPIOC_11;
+	CONFIG(warningLedPin) = GPIO_UNASSIGNED;
 }
 
 static void setupVbatt() {
@@ -67,7 +67,7 @@ static void setupVbatt() {
 	engineConfiguration->analogInputDividerCoefficient = 1.56f;
 
 	// 6.34k high side/1k low side = 9.2
-	engineConfiguration->vbattDividerCoeff = (6.34f / 1.0f);
+	engineConfiguration->vbattDividerCoeff = (7.34f / 1.0f);
 
 	// Battery sense on PA7
 	engineConfiguration->vbattAdcChannel = EFI_ADC_0;
@@ -108,8 +108,8 @@ static void setupEtb() {
 
 static void setupDefaultSensorInputs() {
 
-	engineConfiguration->triggerInputPins[0] = GPIOE_2;
-	engineConfiguration->camInputs[0] = GPIOE_3;
+	engineConfiguration->triggerInputPins[0] = GPIOC_13;
+	engineConfiguration->camInputs[0] = GPIOE_6;
 
 	engineConfiguration->triggerInputPins[1] = GPIO_UNASSIGNED;
 	engineConfiguration->triggerInputPins[2] = GPIO_UNASSIGNED;
