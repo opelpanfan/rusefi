@@ -7,6 +7,7 @@
 #include "adc_inputs.h"
 #include "efilib.h"
 #include "tunerstudio_outputs.h"
+#include "pwm_generator_logic.h"
 
 // Some functions lean on existing FSIO implementation
 #include "fsio_impl.h"
@@ -64,21 +65,68 @@ static int lua_table3d(lua_State* l) {
 }
 
 #if !EFI_UNIT_TEST
-static int lua_fan(lua_State* l) {
-	lua_pushboolean(l, enginePins.fanRelay.getLogicValue());
-	return 1;
+static SimplePwm pwms[LUA_PWM_COUNT];
+static OutputPin pins[LUA_PWM_COUNT];
+
+struct P {
+	SimplePwm& pwm;
+	lua_Integer idx;
+};
+
+static P luaL_checkPwmIndex(lua_State* l, int pos) {
+	auto channel = luaL_checkinteger(l, pos);
+
+	// Ensure channel is valid
+	if (channel < 0 || channel >= FSIO_COMMAND_COUNT) {
+		luaL_error(l, "setPwmDuty invalid channel %d", channel);
+	}
+
+	return { pwms[channel], channel };
 }
 
-static int lua_getAnalog(lua_State* l) {
-	auto idx = luaL_checkinteger(l, 1);
+static int lua_startPwm(lua_State* l) {
+	auto p = luaL_checkPwmIndex(l, 1);
+	auto freq = luaL_checknumber(l, 2);
+	auto duty = luaL_checknumber(l, 2);
 
-	// Sanitize parameter
-	idx = clampI(0, idx, FSIO_ANALOG_INPUT_COUNT - 1);
+	// clamp to 1..1000 hz
+	freq = clampF(1, freq, 1000);
 
-	// Do the analog read
-	float voltage = getVoltage("lua", engineConfiguration->fsioAdc[idx]);
+	startSimplePwmExt(
+		&p.pwm, "lua", &engine->executor,
+		CONFIG(luaOutputPins[p.idx]), &pins[p.idx],
+		freq, duty
+	);
 
-	lua_pushnumber(l, voltage);
+	return 0;
+}
+
+static int lua_setPwmDuty(lua_State* l) {
+	auto p = luaL_checkPwmIndex(l, 1);
+	auto duty = luaL_checknumber(l, 2);
+
+	// clamp to 0..1
+	duty = clampF(0, duty, 1);
+
+	p.pwm.setSimplePwmDutyCycle(duty);
+
+	return 0;
+}
+
+static int lua_setPwmFreq(lua_State* l) {
+	auto p = luaL_checkPwmIndex(l, 1);
+	auto freq = luaL_checknumber(l, 2);
+
+	// clamp to 1..1000 hz
+	freq = clampF(1, freq, 1000);
+
+	p.pwm.setFrequency(freq);
+
+	return 0;
+}
+
+static int lua_fan(lua_State* l) {
+	lua_pushboolean(l, enginePins.fanRelay.getLogicValue());
 	return 1;
 }
 
@@ -121,6 +169,12 @@ static int lua_setDebug(lua_State* l) {
 
 	return 0;
 }
+
+static int lua_stopEngine(lua_State* l) {
+	doScheduleStopEngine();
+
+	return 0;
+}
 #endif // EFI_UNIT_TEST
 
 void configureRusefiLuaHooks(lua_State* l) {
@@ -131,9 +185,14 @@ void configureRusefiLuaHooks(lua_State* l) {
 	lua_register(l, "table3d", lua_table3d);
 
 #if !EFI_UNIT_TEST
+	lua_register(l, "startPwm", lua_startPwm);
+	lua_register(l, "setPwmDuty", lua_setPwmDuty);
+	lua_register(l, "setPwmFreq", lua_setPwmFreq);
+
 	lua_register(l, "getFan", lua_fan);
-	lua_register(l, "getAnalog", lua_getAnalog);
 	lua_register(l, "getDigital", lua_getDigital);
 	lua_register(l, "setDebug", lua_setDebug);
+
+	lua_register(l, "stopEngine", lua_stopEngine);
 #endif
 }

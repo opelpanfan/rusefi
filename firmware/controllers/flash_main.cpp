@@ -63,8 +63,10 @@ void setNeedToWriteConfiguration(void) {
 	needToWriteConfiguration = true;
 
 #if EFI_FLASH_WRITE_THREAD
-	// Signal the flash writer thread to wake up and write at its leisure
-	flashWriteSemaphore.signal();
+	if (allowFlashWhileRunning()) {
+		// Signal the flash writer thread to wake up and write at its leisure
+		flashWriteSemaphore.signal();
+	}
 #endif // EFI_FLASH_WRITE_THREAD
 }
 
@@ -73,24 +75,26 @@ bool getNeedToWriteConfiguration(void) {
 }
 
 void writeToFlashIfPending() {
-// with a flash write thread, the schedule happens directly from
-// setNeedToWriteConfiguration, so there's nothing to do here
-#if !EFI_FLASH_WRITE_THREAD
-	if (!getNeedToWriteConfiguration()) {
+	// with a flash write thread, the schedule happens directly from
+	// setNeedToWriteConfiguration, so there's nothing to do here
+	if (allowFlashWhileRunning() || !getNeedToWriteConfiguration()) {
 		return;
 	}
 
 	writeToFlashNow();
-#endif
 }
 
 // Erase and write a copy of the configuration at the specified address
 template <typename TStorage>
-int eraseAndFlashCopy(flashaddr_t storageAddress, const TStorage& data)
-{
+int eraseAndFlashCopy(flashaddr_t storageAddress, const TStorage& data) {
+	// error already reported, return
+	if (!storageAddress) {
+		return FLASH_RETURN_SUCCESS;
+	}
+
 	auto err = intFlashErase(storageAddress, sizeof(TStorage));
 	if (FLASH_RETURN_SUCCESS != err) {
-		firmwareError(OBD_PCM_Processor_Fault, "Failed to erase flash at %#010x", storageAddress);
+		firmwareError(OBD_PCM_Processor_Fault, "Failed to erase flash at 0x%08x", storageAddress);
 		return err;
 	}
 
@@ -145,6 +149,12 @@ typedef enum {
 
 static persisted_configuration_state_e doReadConfiguration(flashaddr_t address) {
 	efiPrintf("readFromFlash %x", address);
+
+	// error already reported, return
+	if (!address) {
+		return CRC_FAILED;
+	}
+
 	intFlashRead(address, (char *) &persistentState, sizeof(persistentState));
 
 	if (!isValidCrc(&persistentState)) {
@@ -162,17 +172,23 @@ static persisted_configuration_state_e doReadConfiguration(flashaddr_t address) 
  */
 static persisted_configuration_state_e readConfiguration() {
 	efiAssert(CUSTOM_ERR_ASSERT, getCurrentRemainingStack() > EXPECTED_REMAINING_STACK, "read f", PC_ERROR);
+	/*
+	 * getFlashAddr does device validation, we want validation to be invoked even while we are
+	 * HW_CHECK_MODE mode where we would not need actual address
+	 * todo: rename method to emphasis the fact of validation check?
+	 */
+	auto firstCopyAddr = getFlashAddrFirstCopy();
+	auto secondyCopyAddr = getFlashAddrSecondCopy();
+
 #if HW_CHECK_MODE
 	persisted_configuration_state_e result = PC_OK;
 	resetConfigurationExt(DEFAULT_ENGINE_TYPE PASS_ENGINE_PARAMETER_SUFFIX);
 #else // HW_CHECK_MODE
-	persisted_configuration_state_e result = doReadConfiguration(getFlashAddrFirstCopy());
-
-
+	persisted_configuration_state_e result = doReadConfiguration(firstCopyAddr);
 
 	if (result != PC_OK) {
 		efiPrintf("Reading second configuration copy");
-		result = doReadConfiguration(getFlashAddrSecondCopy());
+		result = doReadConfiguration(secondyCopyAddr);
 	}
 
 	if (result == CRC_FAILED) {
@@ -238,7 +254,9 @@ void initFlash() {
 	addConsoleAction("rewriteconfig", rewriteConfig);
 
 #if EFI_FLASH_WRITE_THREAD
-	chThdCreateStatic(flashWriteStack, sizeof(flashWriteStack), PRIO_FLASH_WRITE, flashWriteThread, nullptr);
+	if (allowFlashWhileRunning()) {
+		chThdCreateStatic(flashWriteStack, sizeof(flashWriteStack), PRIO_FLASH_WRITE, flashWriteThread, nullptr);
+	}
 #endif
 }
 

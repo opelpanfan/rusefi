@@ -51,7 +51,8 @@ static constexpr LogField fields[] = {
 	{tsOutputChannels.veValue, GAUGE_NAME_FUEL_VE, "%", 1},
 	{tsOutputChannels.tCharge, "tCharge", "C", 1},
 	{tsOutputChannels.injectorLagMs, GAUGE_NAME_INJECTOR_LAG, "ms", 3},
-	{tsOutputChannels.shortTermFuelTrim, GAUGE_NAME_FUEL_TRIM, "%", 3},
+	{tsOutputChannels.fuelTrim[0], GAUGE_NAME_FUEL_TRIM, "%", 2},
+	{tsOutputChannels.fuelTrim[1], GAUGE_NAME_FUEL_TRIM_2, "%", 2},
 	{tsOutputChannels.wallFuelCorrection, GAUGE_NAME_FUEL_WALL_CORRECTION, "ms", 3},
 	{tsOutputChannels.tpsAccelFuel, GAUGE_NAME_FUEL_TPS_EXTRA, "ms", 3},
 	{tsOutputChannels.ignitionAdvance, GAUGE_NAME_TIMING_ADVANCE, "deg", 1},
@@ -68,7 +69,6 @@ static constexpr LogField fields[] = {
 	{tsOutputChannels.flexPercent, GAUGE_NAME_FLEX, "%", 1},
 	{tsOutputChannels.fuelFlowRate, GAUGE_NAME_FUEL_FLOW, "g/s", 3},
 	{tsOutputChannels.totalFuelConsumption, GAUGE_NAME_FUEL_CONSUMPTION, "g", 1},
-	{tsOutputChannels.engineLoad, GAUGE_NAME_ENGINE_LOAD, "%", 1},
 	{tsOutputChannels.knockLevel, GAUGE_NAME_KNOCK_LEVEL, "dBv", 0},
 };
 

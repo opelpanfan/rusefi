@@ -146,6 +146,22 @@ void Engine::initializeTriggerWaveform(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 			engineConfiguration->ambiguousOperationMode,
 			engineConfiguration->useOnlyRisingEdgeForTrigger, &engineConfiguration->trigger));
 
+	/**
+	 * this is only useful while troubleshooting a new trigger shape in the field
+	 * in very VERY rare circumstances
+	 */
+	if (CONFIG(overrideTriggerGaps)) {
+		int gapIndex = 0;
+		for (;gapIndex<=CONFIG(overrideTriggerGaps);gapIndex++) {
+			float gapOverride = CONFIG(triggerGapOverride[gapIndex]);
+			TRIGGER_WAVEFORM(setTriggerSynchronizationGap3(/*gapIndex*/gapIndex, gapOverride * TRIGGER_GAP_DEVIATION_LOW, gapOverride * TRIGGER_GAP_DEVIATION_HIGH));
+		}
+		for (;gapIndex<GAP_TRACKING_LENGTH;gapIndex++) {
+			ENGINE(triggerCentral.triggerShape).syncronizationRatioFrom[gapIndex] = NAN;
+			ENGINE(triggerCentral.triggerShape).syncronizationRatioTo[gapIndex] = NAN;
+		}
+	}
+
 	if (!TRIGGER_WAVEFORM(shapeDefinitionError)) {
 		/**
 	 	 * 'initState' instance of TriggerState is used only to initialize 'this' TriggerWaveform instance
@@ -159,8 +175,9 @@ void Engine::initializeTriggerWaveform(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 	}
 
 
-	initVvtShape(0, initState PASS_ENGINE_PARAMETER_SUFFIX);
-	initVvtShape(1, initState PASS_ENGINE_PARAMETER_SUFFIX);
+	for (int camIndex = 0;camIndex < CAMS_PER_BANK;camIndex++) {
+		initVvtShape(camIndex, initState PASS_ENGINE_PARAMETER_SUFFIX);
+	}
 
 
 	if (!TRIGGER_WAVEFORM(shapeDefinitionError)) {
@@ -224,17 +241,7 @@ void Engine::periodicSlowCallback(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 	standardAirCharge = getStandardAirCharge(PASS_ENGINE_PARAMETER_SIGNATURE);
 
 #if (BOARD_TLE8888_COUNT > 0)
-	static efitick_t tle8888CrankingResetTime = 0;
-
-	if (CONFIG(useTLE8888_cranking_hack) && ENGINE(rpmCalculator).isCranking()) {
-		efitick_t nowNt = getTimeNowNt();
-		if (nowNt - tle8888CrankingResetTime > MS2NT(300)) {
-			tle8888_req_init();
-			// let's reset TLE8888 every 300ms while cranking since that's the best we can do to deal with undervoltage reset
-			// PS: oh yes, it's a horrible design! Please suggest something better!
-			tle8888CrankingResetTime = nowNt;
-		}
-	}
+	tle8888startup();
 #endif
 
 #if EFI_DYNO_VIEW
@@ -243,10 +250,10 @@ void Engine::periodicSlowCallback(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 
 	slowCallBackWasInvoked = true;
 
-#if HW_PROTEUS
-	void baroUpdate();
-	baroUpdate();
-#endif
+#if EFI_PROD_CODE
+	void baroLps25Update();
+	baroLps25Update();
+#endif // EFI_PROD_CODE
 
 #if ANALOG_HW_CHECK_MODE
 	efiAssertVoid(OBD_PCM_Processor_Fault, isAdcChannelValid(CONFIG(clt).adcChannel), "No CLT setting");
@@ -468,7 +475,7 @@ void Engine::injectEngineReferences() {
 
 void Engine::setConfig(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 	INJECT_ENGINE_REFERENCE(this);
-	memset(config, 0, sizeof(persistent_config_s));
+	efi::clear(config);
 
 	injectEngineReferences();
 }

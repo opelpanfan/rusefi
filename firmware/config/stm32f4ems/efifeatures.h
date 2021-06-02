@@ -264,12 +264,17 @@
 
 // F42x has more memory, so we can:
 //  - use compressed USB MSD image (requires 32k of memory)
-//  - use Lua interpreter (requires ~20k of memory)
+//  - use perf trace (requires ~16k of memory)
 #ifdef EFI_IS_F42x
 	#define EFI_USE_COMPRESSED_INI_MSD
-	#define EFI_LUA TRUE
+	#define ENABLE_PERF_TRACE TRUE
 #else
-	#define EFI_LUA FALSE
+	// small memory F40x can't fit perf trace
+	#define ENABLE_PERF_TRACE FALSE
+#endif
+
+#ifndef EFI_LUA
+#define EFI_LUA TRUE
 #endif
 
 #ifndef EFI_ENGINE_SNIFFER
@@ -398,10 +403,5 @@
 #ifndef CONFIG_RESET_SWITCH_PIN
 #define CONFIG_RESET_SWITCH_PIN 6
 #endif
-
-/**
- * This is the size of the MemoryStream used by chvprintf
- */
-#define INTERMEDIATE_LOGGING_BUFFER_SIZE 2000
 
 #define EFI_JOYSTICK TRUE
