@@ -87,7 +87,7 @@ static void prepareCylinderIgnitionSchedule(angle_t dwellAngleDuration, floatms_
 	angle_t ignitionPositionWithinEngineCycle = ENGINE(ignitionPositionWithinEngineCycle[event->cylinderIndex]);
 	assertAngleRange(ignitionPositionWithinEngineCycle, "aPWEC", CUSTOM_ERR_6566);
 	// this correction is usually zero (not used)
-	cfg_float_t_1f perCylinderCorrection = CONFIG(timing_offset_cylinder[event->cylinderIndex]);
+	float perCylinderCorrection = CONFIG(timing_offset_cylinder[event->cylinderIndex]);
 	const angle_t sparkAngle = -ENGINE(engineState.timingAdvance) + ignitionPositionWithinEngineCycle + perCylinderCorrection;
 	efiAssertVoid(CUSTOM_SPARK_ANGLE_9, !cisnan(sparkAngle), "findAngle#9");
 
@@ -207,7 +207,7 @@ if (engineConfiguration->debugMode == DBG_DWELL_METRIC) {
 	startKnockSampling(event->cylinderNumber);
 #endif
 #if EFI_HIP_9011
-	hip9011_startKnockSampling(event->cylinderNumber, nowNt);
+	hip9011_onFireEvent(event->cylinderNumber, nowNt);
 #endif
 }
 

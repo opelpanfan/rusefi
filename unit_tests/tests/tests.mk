@@ -5,7 +5,9 @@ TESTS_SRC_CPP = \
 	tests/trigger/test_trigger_multi_sync.cpp \
 	tests/trigger/test_cam_vvt_input.cpp \
 	tests/trigger/test_2jz_vvt.cpp \
+	tests/trigger/test_real_cranking_miata_NA.cpp \
 	tests/trigger/test_quad_cam.cpp \
+	tests/trigger/test_override_gaps.cpp \
 	tests/trigger/test_injection_scheduling.cpp \
 	tests/ignition_injection/injection_mode_transition.cpp \
 	tests/ignition_injection/test_startOfCrankingPrimingPulse.cpp \
@@ -19,6 +21,7 @@ TESTS_SRC_CPP = \
 	tests/lua/test_lua_hooks.cpp \
 	tests/sensor/test_cj125.cpp \
 	tests/util/test_timer.cpp \
+	tests/system/test_periodic_thread_controller.cpp \
 	tests/test_util.cpp \
 	tests/test_start_stop.cpp \
 	tests/test_hardware_reinit.cpp \

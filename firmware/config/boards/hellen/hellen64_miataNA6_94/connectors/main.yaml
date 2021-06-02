@@ -31,7 +31,7 @@ pins:
     type: ls
 
   - pin: 1F
-    id: GPIOD_13
+    id: GPIOF_12
     class: outputs
     ts_name: 1F - Tachometer 95.5
     function: Tachometer
@@ -54,7 +54,7 @@ pins:
     type: gnd
 
   - pin: 1J
-    id: GPIOH_15
+    id: GPIOB_0
     class: outputs
     ts_name: 1J - AC Relay
     function: A/C Relay
@@ -78,8 +78,9 @@ pins:
     function: Sensor +5V
 
   - pin: 1Q
-    id: [GPIOB_0, EFI_ADC_8]
-    class: [switch_inputs, analog_inputs]
+    id: GPIOE_12
+    class: switch_inputs
+    ts_name: 1Q AC Switch
     function: A/C switch input
     type: din
 
@@ -91,18 +92,44 @@ pins:
     type: ls
 
   - pin: 1S
-    ts_name: 1S - A/C Input
-    function: A/C Input
+    ts_name: 1S - Heate Input
+    function: Heater Input
 
   - pin: 1T
     function: EGR Solenoid
 
   - pin: 1V
-    id: [GPIOC_5, EFI_ADC_15]
+    id: [GPIOC_4, EFI_ADC_14]
     class: [switch_inputs, analog_inputs]
     ts_name: 1V - Clutch Switch
     function: Clutch switch input
     type: din
+
+  - pin: 2A
+    id: GPIOC_6
+    class: outputs
+    ts_name: 2A - Boost Control
+    function: Boost Control Solenoid
+
+  - pin: 2B
+    id: GPIOF_7
+    class: analog_input
+    ts_name: 2B - Knock Sensor
+    function: Knock Sensor Input
+    
+  - pin: 2L
+    id: GPIOE_13
+    class: analog_input
+    ts_name: 2L - Flex Fuel
+    function: Flex Fuel Input
+  
+  - pin: 2I
+    function: Options Sensor Ground
+    type: Gnd
+    
+  - pin: 2J
+    function: +5v options port
+    type: +5v
 
   - pin: 3A
     function: Power GND
@@ -142,7 +169,7 @@ pins:
     function: Camshaft Sensor
     
   - pin: 3I
-    id: GPIOD_13
+    id: GPIOF_12
     class: outputs
     ts_name: 3I - Tachometer 90-95.5
     function: tachometer
@@ -165,10 +192,10 @@ pins:
     function: TPS INPUT
 
   - pin: 3O
-    id: GPIOG_2
-    class: outputs
-    ts_name: 3O - Fuel Pump NA6
-    function: FUEL PUMP OUTPUT
+    id: EFI_ADC_10
+    class: analog_inputs
+    ts_name: 3O - MAF
+    function: MAF Input
 
   - pin: 3P
     id: EFI_ADC_13
@@ -185,7 +212,7 @@ pins:
   - pin: 3T
     id: GPIOG_2
     class: outputs
-    ts_name: 3T - Fuel Pump Relay
+    ts_name: Fuel Pump Relay
     function: Fuel Pump Relay
     type: ls
 

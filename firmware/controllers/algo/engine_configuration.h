@@ -26,7 +26,6 @@ void setOperationMode(engine_configuration_s *engineConfiguration, operation_mod
 
 void prepareVoidConfiguration(engine_configuration_s *activeConfiguration);
 void setTargetRpmCurve(int rpm DECLARE_CONFIG_PARAMETER_SUFFIX);
-void setLambdaMap(lambda_table_t table, float value);
 void setWholeIgnitionIatCorr(float value DECLARE_CONFIG_PARAMETER_SUFFIX);
 void setFuelTablesLoadBin(float minValue, float maxValue DECLARE_CONFIG_PARAMETER_SUFFIX);
 void setWholeIatCorrTimingTable(float value DECLARE_CONFIG_PARAMETER_SUFFIX);
@@ -45,8 +44,6 @@ void incrementGlobalConfigurationVersion(DECLARE_ENGINE_PARAMETER_SIGNATURE);
 void commonFrankensoAnalogInputs(engine_configuration_s *engineConfiguration);
 void setFrankenso0_1_joystick(engine_configuration_s *engineConfiguration);
 
-#define MEMCPY(dest, src) {memcpy(dest, src, sizeof(src));}
-
 void emptyCallbackWithConfiguration(engine_configuration_s * engine);
 void setDefaultFrankensoConfiguration(DECLARE_CONFIG_PARAMETER_SIGNATURE);
 
@@ -63,6 +60,3 @@ void rememberCurrentConfiguration(DECLARE_ENGINE_PARAMETER_SIGNATURE);
 
 void setBoardDefaultConfiguration(void);
 void setBoardConfigOverrides(void);
-
-// TODO: remove me
-#define CONFIG_OVERRIDE(__x__) CONFIG(__x__)

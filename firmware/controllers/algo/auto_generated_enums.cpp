@@ -1,7 +1,7 @@
 #include "global.h"
 #include "rusefi_enums.h"
 #include "rusefi_hw_enums.h"
-// was generated automatically by rusEFI tool  from rusefi_hw_enums.h // was generated automatically by rusEFI tool  from rusefi_enums.h // by enum2string.jar tool on Sat May 08 16:52:29 MSK 2021
+// was generated automatically by rusEFI tool  from rusefi_hw_enums.h // was generated automatically by rusEFI tool  from rusefi_enums.h // by enum2string.jar tool on Fri May 28 07:39:51 UTC 2021
 // see also gen_config_and_enums.bat
 
 
@@ -851,6 +851,12 @@ case HELLEN_121_NISSAN:
   return "HELLEN_121_NISSAN";
 case HELLEN_121_VAG:
   return "HELLEN_121_VAG";
+case HELLEN_121_VAG_5_CYL:
+  return "HELLEN_121_VAG_5_CYL";
+case HELLEN_121_VAG_6_CYL:
+  return "HELLEN_121_VAG_6_CYL";
+case HELLEN_121_VAG_8_CYL:
+  return "HELLEN_121_VAG_8_CYL";
 case HELLEN_128_MERCEDES:
   return "HELLEN_128_MERCEDES";
 case HELLEN_134_BMW:
@@ -1012,6 +1018,8 @@ case REVERSE:
 }
 const char *getGppwm_channel_e(gppwm_channel_e value){
 switch(value) {
+case GPPWM_AccelPedal:
+  return "GPPWM_AccelPedal";
 case GPPWM_AuxTemp1:
   return "GPPWM_AuxTemp1";
 case GPPWM_AuxTemp2:

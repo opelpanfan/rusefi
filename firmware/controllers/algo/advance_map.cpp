@@ -37,30 +37,11 @@ static ign_Map3D_t advanceMap("advance");
 // This coeff in ctor parameter is sufficient for int16<->float conversion!
 static ign_Map3D_t iatAdvanceCorrectionMap("iat corr");
 
-static int minCrankingRpm = 0;
+// todo: reset this between cranking attempts?! #2735
+int minCrankingRpm = 0;
 
 #if IGN_LOAD_COUNT == DEFAULT_IGN_LOAD_COUNT
 static const float iatTimingRpmBins[IGN_LOAD_COUNT] = {880,	1260,	1640,	2020,	2400,	2780,	3000,	3380,	3760,	4140,	4520,	5000,	5700,	6500,	7200,	8000};
-
-//880	1260	1640	2020	2400	2780	3000	3380	3760	4140	4520	5000	5700	6500	7200	8000
-static const ignition_table_t defaultIatTiming = {
-		{ 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 2, 2, 2, 2, 2},
-		{ 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 2, 2, 2, 2, 2},
-		{ 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 2, 2, 2, 2, 2},
-		{ 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 2, 2, 2, 2, 2},
-		{3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 3.5, 2, 2, 2, 2, 2},
-		{ 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2},
-		{ 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0},
-		{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		{ 0, 0, -0.9, -0.9, -0.9, -0.9, -0.9, -0.9, -0.9, -0.9, -0.9, -0.9, -0.9, -0.9, -0.9, -0.9},
-		{ -3.3, -3.4, -4.9, -4.9, -4.9, -4.9, -4.4, -4.4, -4.4, -4.4, -4.4, -0.9, -0.9, -0.9, -0.9, -0.9},
-		{ -4.4, -4.9, -5.9, -5.9, -5.9, -5.9, -4.9, -4.9, -4.9, -4.9, -4.9, -2.4, -2.4, -2.4, -2.4, -2.4},
-		{ -4.4, -4.9, -5.9, -5.9, -5.9, -5.9, -4.9, -4.9, -4.9, -4.9, -4.9, -2.9, -2.9, -2.9, -2.9, -2.9},
-		{-4.4, -4.9, -5.9, -5.9, -5.9, -5.9, -4.9, -4.9, -4.9, -4.9, -4.9, -3.9, -3.9, -3.9, -3.9, -3.9},
-		{-4.4, -4.9, -5.9, -5.9, -5.9, -5.9, -4.9, -4.9, -4.9, -4.9, -4.9, -3.9, -3.9, -3.9, -3.9, -3.9},
-		{-4.4, -4.9, -5.9, -5.9, -5.9, -5.9, -4.9, -4.9, -4.9, -4.9, -4.9, -3.9, -3.9, -3.9, -3.9, -3.9},
-};
 
 #endif /* IGN_LOAD_COUNT == DEFAULT_IGN_LOAD_COUNT */
 
@@ -241,8 +222,31 @@ size_t getMultiSparkCount(int rpm DECLARE_ENGINE_PARAMETER_SUFFIX) {
 void setDefaultIatTimingCorrection(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 	setLinearCurve(config->ignitionIatCorrLoadBins, /*from*/CLT_CURVE_RANGE_FROM, 110, 1);
 #if IGN_LOAD_COUNT == DEFAULT_IGN_LOAD_COUNT
-	MEMCPY(config->ignitionIatCorrRpmBins, iatTimingRpmBins);
-	MEMCPY(config->ignitionIatCorrTable, defaultIatTiming);
+	copyArray(config->ignitionIatCorrRpmBins, iatTimingRpmBins);
+
+	static constexpr int8_t defaultIatCorr[16] = {
+		4,	// -40 deg
+		4,
+		3,
+		2,
+		0,	// 0 deg
+		0,
+		0,
+		0,
+		0,
+		-1,	// 50 deg
+		-2,
+		-4,
+		-4,
+		-4,
+		-4,
+		-4,	// 110 deg
+	};
+
+	// Set each row of the table to the same value (no rpm dependence by default)
+	for (size_t i = 0; i < efi::size(defaultIatCorr); i++) {
+		setArrayValues(config->ignitionIatCorrTable[i], (float)defaultIatCorr[i]);
+	}
 #else
 	setLinearCurve(config->ignitionIatCorrLoadBins, /*from*/0, 6000, 1);
 #endif /* IGN_LOAD_COUNT == DEFAULT_IGN_LOAD_COUNT */
