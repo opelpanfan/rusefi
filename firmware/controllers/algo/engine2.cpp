@@ -128,16 +128,12 @@ void EngineState::periodicFastCallback(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 	// todo: move this into slow callback, no reason for CLT corr to be here
 	running.coolantTemperatureCoefficient = getCltFuelCorrection(PASS_ENGINE_PARAMETER_SIGNATURE);
 
-	// TODO: consume correction from the second bank
-	auto clResult = fuelClosedLoopCorrection(PASS_ENGINE_PARAMETER_SIGNATURE);
-	running.pidCorrection = clResult.banks[0];
-
 	// Fuel cut-off isn't just 0 or 1, it can be tapered
 	fuelCutoffCorrection = getFuelCutOffCorrection(nowNt, rpm PASS_ENGINE_PARAMETER_SUFFIX);
 
 	// post-cranking fuel enrichment.
-	// for compatibility reasons, apply only if the factor is greater than zero (0.01 margin used)
-	if (engineConfiguration->postCrankingFactor > 0.01f) {
+	// for compatibility reasons, apply only if the factor is greater than unity (only allow adding fuel)
+	if (engineConfiguration->postCrankingFactor > 1.0f) {
 		// convert to microsecs and then to seconds
 		running.timeSinceCrankingInSecs = NT2US(timeSinceCranking) / 1000000.0f;
 		// use interpolation for correction taper
@@ -158,7 +154,15 @@ void EngineState::periodicFastCallback(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 	updateTChargeK(rpm, tps.value_or(0) PASS_ENGINE_PARAMETER_SUFFIX);
 
 	float injectionMass = getInjectionMass(rpm PASS_ENGINE_PARAMETER_SUFFIX);
-	ENGINE(injectionMass) = injectionMass;
+	auto clResult = fuelClosedLoopCorrection(PASS_ENGINE_PARAMETER_SIGNATURE);
+
+	// compute per-bank fueling
+	for (size_t i = 0; i < STFT_BANK_COUNT; i++) {
+		float corr = clResult.banks[i];
+		ENGINE(injectionMass)[i] = injectionMass * corr;
+		ENGINE(stftCorrection)[i] = corr;
+	}
+
 	// Store the pre-wall wetting injection duration for scheduling purposes only, not the actual injection duration
 	ENGINE(injectionDuration) = ENGINE(injectorModel)->getInjectionDuration(injectionMass);
 

@@ -1,7 +1,7 @@
 #include "global.h"
 #include "rusefi_enums.h"
 #include "rusefi_hw_enums.h"
-// was generated automatically by rusEFI tool  from rusefi_hw_enums.h // was generated automatically by rusEFI tool  from rusefi_enums.h // by enum2string.jar tool on Tue May 04 14:13:03 UTC 2021
+// was generated automatically by rusEFI tool  from rusefi_hw_enums.h // was generated automatically by rusEFI tool  from rusefi_enums.h // by enum2string.jar tool on Fri May 28 07:39:53 UTC 2021
 // see also gen_config_and_enums.bat
 
 
@@ -875,6 +875,12 @@ case HELLEN_121_NISSAN:
   return "HELLEN_121_NISSAN";
 case HELLEN_121_VAG:
   return "HELLEN_121_VAG";
+case HELLEN_121_VAG_5_CYL:
+  return "HELLEN_121_VAG_5_CYL";
+case HELLEN_121_VAG_6_CYL:
+  return "HELLEN_121_VAG_6_CYL";
+case HELLEN_121_VAG_8_CYL:
+  return "HELLEN_121_VAG_8_CYL";
 case HELLEN_128_MERCEDES:
   return "HELLEN_128_MERCEDES";
 case HELLEN_134_BMW:
@@ -1036,6 +1042,8 @@ case REVERSE:
 }
 const char *getGppwm_channel_e(gppwm_channel_e value){
 switch(value) {
+case GPPWM_AccelPedal:
+  return "GPPWM_AccelPedal";
 case GPPWM_AuxTemp1:
   return "GPPWM_AuxTemp1";
 case GPPWM_AuxTemp2:
@@ -1063,23 +1071,6 @@ case GPPWM_GreaterThan:
   return "GPPWM_GreaterThan";
 case GPPWM_LessThan:
   return "GPPWM_LessThan";
-  }
- return NULL;
-}
-const char *getHip_state_e(hip_state_e value){
-switch(value) {
-case IS_INTEGRATING:
-  return "IS_INTEGRATING";
-case IS_SENDING_SPI_COMMAND:
-  return "IS_SENDING_SPI_COMMAND";
-case NOT_READY:
-  return "NOT_READY";
-case READY_TO_INTEGRATE:
-  return "READY_TO_INTEGRATE";
-case WAITING_FOR_ADC_TO_SKIP:
-  return "WAITING_FOR_ADC_TO_SKIP";
-case WAITING_FOR_RESULT_ADC:
-  return "WAITING_FOR_RESULT_ADC";
   }
  return NULL;
 }

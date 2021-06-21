@@ -52,7 +52,7 @@ typedef struct {
 	unsigned int hasSdCard : 1; // bit 0, 72
 	unsigned int isIgnitionEnabledIndicator : 1; // bit 1
 	unsigned int isInjectionEnabledIndicator : 1; // bit 2
-	unsigned int isCylinderCleanupEnabled : 1; // bit 3
+	unsigned int unusedb3 : 1; // bit 3
 	unsigned int isCylinderCleanupActivated : 1; // bit 4
 	unsigned int isFuelPumpOn : 1; // bit 5
 	unsigned int isFanOn : 1; // bit 6
@@ -80,6 +80,7 @@ typedef struct {
 	unsigned int launchTriggered : 1; // bit 28
 	unsigned int isTps2Error : 1; // bit 29
 	unsigned int isIdleClosedLoop : 1; // bit 30
+	unsigned int isIdleCoasting : 1; // bit 31
 
 	// RPM, vss
 	scaled_channel<uint16_t> rpm;   // 4
@@ -106,7 +107,7 @@ typedef struct {
 	scaled_pressure baroPressure; // 32
 
 	scaled_lambda lambda; // 34
-	scaled_channel<uint16_t, 100> engineLoad; // 36
+	uint16_t unused36; // 36
 
 	// misc sensors
 	scaled_voltage vBatt; // 38
@@ -133,7 +134,7 @@ typedef struct {
 	scaled_percent iatCorrection; // 64
 	scaled_percent cltCorrection; // 66
 	scaled_percent baroCorrection; // 68
-	scaled_percent shortTermFuelTrim; // 70
+	uint16_t unused70; // 70
 
 	// Wall model AE
 	scaled_ms wallFuelAmount; // 72
@@ -271,7 +272,10 @@ typedef struct {
 	scaled_angle secondVvtPositionBank1; // 290
 	scaled_angle vvtPositionBank2; // 292
 	scaled_angle secondVvtPositionBank2; // 294
-	uint8_t unusedAtTheEnd[42]; // we have some unused bytes to allow compatible TS changes
+
+	scaled_percent fuelTrim[2];	// 296 & 298
+
+	uint8_t unusedAtTheEnd[38]; // we have some unused bytes to allow compatible TS changes
 
 	// Temporary - will remove soon
 	TsDebugChannels* getDebugChannels() {

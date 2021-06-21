@@ -69,7 +69,7 @@ extern bool main_loop_started;
 #if EFI_PROD_CODE
 // todo: move this logic to algo folder!
 #include "rtc_helper.h"
-#include "lcd_HD44780.h"
+#include "HD44780.h"
 #include "rusefi.h"
 #include "pin_repository.h"
 #include "flash_main.h"
@@ -154,7 +154,7 @@ static int packEngineMode(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 }
 
 static float getAirFlowGauge(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
-	return hasMafSensor() ? getRealMaf(PASS_ENGINE_PARAMETER_SIGNATURE) : engine->engineState.airFlow;
+	return Sensor::get(SensorType::Maf).value_or(engine->engineState.airFlow);
 }
 
 void writeLogLine(Writer& buffer) {
@@ -531,9 +531,7 @@ void updateTunerStudioState(TunerStudioOutputChannels *tsOutputChannels DECLARE_
 	tsOutputChannels->rawOilPressure = Sensor::getRaw(SensorType::OilPressure);
 	tsOutputChannels->rawLowFuelPressure = Sensor::getRaw(SensorType::FuelPressureLow);
 	tsOutputChannels->rawHighFuelPressure = Sensor::getRaw(SensorType::FuelPressureHigh);
-
-	// offset 16
-	tsOutputChannels->massAirFlowVoltage = hasMafSensor() ? getMafVoltage(PASS_ENGINE_PARAMETER_SIGNATURE) : 0;
+	tsOutputChannels->massAirFlowVoltage = Sensor::getRaw(SensorType::Maf);
 
 	float lambdaValue = Sensor::get(SensorType::Lambda1).value_or(0);
 	tsOutputChannels->lambda = lambdaValue;
@@ -542,9 +540,6 @@ void updateTunerStudioState(TunerStudioOutputChannels *tsOutputChannels DECLARE_
 	float lambda2Value = Sensor::get(SensorType::Lambda2).value_or(0);
 	tsOutputChannels->lambda2 = lambda2Value;
 	tsOutputChannels->airFuelRatio2 = lambda2Value * ENGINE(engineState.stoichiometricRatio);
-
-	// offset 24
-	tsOutputChannels->engineLoad = getEngineLoadT(PASS_ENGINE_PARAMETER_SIGNATURE);
 
 	tsOutputChannels->fuelingLoad = getFuelingLoad(PASS_ENGINE_PARAMETER_SIGNATURE);
 	tsOutputChannels->ignitionLoad = getIgnitionLoad(PASS_ENGINE_PARAMETER_SIGNATURE);
@@ -560,7 +555,7 @@ void updateTunerStudioState(TunerStudioOutputChannels *tsOutputChannels DECLARE_
 	// 48
 	tsOutputChannels->fuelBase = engine->engineState.baseFuel * 1000;	// Convert grams to mg
 	// 64
-	tsOutputChannels->actualLastInjection = ENGINE(actualLastInjection);
+	tsOutputChannels->actualLastInjection = ENGINE(actualLastInjection)[0];
 
 
 	// 104
@@ -603,7 +598,10 @@ void updateTunerStudioState(TunerStudioOutputChannels *tsOutputChannels DECLARE_
 
 #if EFI_SHAFT_POSITION_INPUT
 	// 248
-	tsOutputChannels->vvtPosition = engine->triggerCentral.getVVTPosition(0, 0);
+	tsOutputChannels->vvtPosition = engine->triggerCentral.getVVTPosition(/*bankIndex*/0, /*camIndex*/0);
+	tsOutputChannels->secondVvtPositionBank1 = engine->triggerCentral.getVVTPosition(/*bankIndex*/0, /*camIndex*/1);
+	tsOutputChannels->vvtPositionBank2 = engine->triggerCentral.getVVTPosition(/*bankIndex*/1, /*camIndex*/0);
+	tsOutputChannels->secondVvtPositionBank2 = engine->triggerCentral.getVVTPosition(/*bankIndex*/1, /*camIndex*/1);
 #endif
 
 	// 252
@@ -611,7 +609,9 @@ void updateTunerStudioState(TunerStudioOutputChannels *tsOutputChannels DECLARE_
 	// 120
 	tsOutputChannels->firmwareVersion = getRusEfiVersion();
 	// 268
-	tsOutputChannels->shortTermFuelTrim = 100.0f * (ENGINE(engineState.running.pidCorrection) - 1.0f);
+	tsOutputChannels->fuelTrim[0] = 100.0f * (ENGINE(stftCorrection)[0] - 1.0f);
+	tsOutputChannels->fuelTrim[1] = 100.0f * (ENGINE(stftCorrection)[1] - 1.0f);
+
 	// 276
 	tsOutputChannels->accelerationX = engine->sensors.accelerometer.x;
 	// 278
@@ -650,7 +650,7 @@ void updateTunerStudioState(TunerStudioOutputChannels *tsOutputChannels DECLARE_
 #endif // HW_CHECK_MODE
 
 	tsOutputChannels->isWarnNow = engine->engineState.warnings.isWarningNow(timeSeconds, true);
-#if EFI_HIP_9011
+#if EFI_HIP_9011_DEBUG
 	tsOutputChannels->isKnockChipOk = (instance.invalidResponsesCount == 0);
 #endif /* EFI_HIP_9011 */
 
@@ -702,7 +702,6 @@ void updateTunerStudioState(TunerStudioOutputChannels *tsOutputChannels DECLARE_
 	tsOutputChannels->isO2HeaterOn = enginePins.o2heater.getLogicValue();
 	tsOutputChannels->isIgnitionEnabledIndicator = ENGINE(limpManager).allowIgnition();
 	tsOutputChannels->isInjectionEnabledIndicator = ENGINE(limpManager).allowInjection();
-	tsOutputChannels->isCylinderCleanupEnabled = engineConfiguration->isCylinderCleanupEnabled;
 	tsOutputChannels->isCylinderCleanupActivated = engine->isCylinderCleanupMode;
 
 #if EFI_VEHICLE_SPEED
@@ -828,7 +827,7 @@ void updateTunerStudioState(TunerStudioOutputChannels *tsOutputChannels DECLARE_
 	case DBG_CRANKING_DETAILS:
 		tsOutputChannels->debugIntField1 = engine->rpmCalculator.getRevolutionCounterSinceStart();
 		break;
-#if EFI_HIP_9011
+#if EFI_HIP_9011_DEBUG
 	case DBG_KNOCK:
 		// todo: maybe extract hipPostState(tsOutputChannels);
 		tsOutputChannels->debugIntField1 = instance.correctResponsesCount;

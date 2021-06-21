@@ -1,4 +1,4 @@
-// this section was generated automatically by rusEFI tool ConfigDefinition.jar based on kinetis_gen_config.bat integration/rusefi_config.txt Wed May 05 14:58:36 UTC 2021
+// this section was generated automatically by rusEFI tool ConfigDefinition.jar based on kinetis_gen_config.bat integration/rusefi_config.txt Wed Jun 02 05:29:53 UTC 2021
 // by class com.rusefi.output.CHeaderConsumer
 // begin
 #pragma once
@@ -22,8 +22,6 @@ struct stft_cell_cfg_s {
 	uint16_t timeConstant;
 	/** total size 4*/
 };
-
-typedef struct stft_cell_cfg_s stft_cell_cfg_s;
 
 // start of stft_s
 struct stft_s {
@@ -82,8 +80,6 @@ struct stft_s {
 	/** total size 24*/
 };
 
-typedef struct stft_s stft_s;
-
 // start of pid_s
 struct pid_s {
 	/**
@@ -122,8 +118,6 @@ struct pid_s {
 	/** total size 20*/
 };
 
-typedef struct pid_s pid_s;
-
 // start of cranking_parameters_s
 struct cranking_parameters_s {
 	/**
@@ -150,8 +144,6 @@ struct cranking_parameters_s {
 	/** total size 8*/
 };
 
-typedef struct cranking_parameters_s cranking_parameters_s;
-
 // start of spi_pins
 struct spi_pins {
 	/**
@@ -174,8 +166,6 @@ struct spi_pins {
 	uint8_t alignmentFill_at_3[1];
 	/** total size 4*/
 };
-
-typedef struct spi_pins spi_pins;
 
 // start of gppwm_channel
 struct gppwm_channel {
@@ -237,8 +227,6 @@ struct gppwm_channel {
 	/** total size 88*/
 };
 
-typedef struct gppwm_channel gppwm_channel;
-
 // start of air_pressure_sensor_config_s
 struct air_pressure_sensor_config_s {
 	/**
@@ -268,8 +256,6 @@ struct air_pressure_sensor_config_s {
 	uint8_t alignmentFill[3];
 	/** total size 16*/
 };
-
-typedef struct air_pressure_sensor_config_s air_pressure_sensor_config_s;
 
 /**
  * @brief MAP averaging configuration
@@ -303,8 +289,6 @@ struct MAP_sensor_config_s {
 	air_pressure_sensor_config_s sensor;
 	/** total size 144*/
 };
-
-typedef struct MAP_sensor_config_s MAP_sensor_config_s;
 
 /**
  * @brief Thermistor known values
@@ -352,8 +336,6 @@ struct thermistor_conf_s {
 	/** total size 28*/
 };
 
-typedef struct thermistor_conf_s thermistor_conf_s;
-
 /**
  * @brief Linear sensor interpolation
 
@@ -392,8 +374,6 @@ struct linear_sensor_s {
 	/** total size 20*/
 };
 
-typedef struct linear_sensor_s linear_sensor_s;
-
 /**
  * @brief Thermistor curve parameters
 
@@ -416,8 +396,6 @@ struct ThermistorConf {
 	uint8_t alignmentFill_at_29[3];
 	/** total size 32*/
 };
-
-typedef struct ThermistorConf ThermistorConf;
 
 // start of injector_s
 struct injector_s {
@@ -446,8 +424,6 @@ struct injector_s {
 	/** total size 68*/
 };
 
-typedef struct injector_s injector_s;
-
 // start of specs_s
 struct specs_s {
 	/**
@@ -467,8 +443,6 @@ struct specs_s {
 	firing_order_e firingOrder;
 	/** total size 12*/
 };
-
-typedef struct specs_s specs_s;
 
 /**
  * @brief Trigger wheel(s) configuration
@@ -592,8 +566,6 @@ struct trigger_config_s {
 	/** total size 16*/
 };
 
-typedef struct trigger_config_s trigger_config_s;
-
 // start of afr_sensor_s
 struct afr_sensor_s {
 	/**
@@ -628,8 +600,6 @@ struct afr_sensor_s {
 	/** total size 20*/
 };
 
-typedef struct afr_sensor_s afr_sensor_s;
-
 // start of idle_hardware_s
 struct idle_hardware_s {
 	/**
@@ -656,8 +626,6 @@ struct idle_hardware_s {
 	/** total size 8*/
 };
 
-typedef struct idle_hardware_s idle_hardware_s;
-
 // start of dc_io
 struct dc_io {
 	/**
@@ -678,8 +646,6 @@ struct dc_io {
 	brain_pin_e disablePin;
 	/** total size 4*/
 };
-
-typedef struct dc_io dc_io;
 
 // start of engine_configuration_s
 struct engine_configuration_s {
@@ -712,7 +678,7 @@ struct engine_configuration_s {
 	bool isVerboseAuxPid1 : 1;
 	/**
 	offset 76 bit 3 */
-	bool unused_294_3 : 1;
+	bool overrideTriggerGaps : 1;
 	/**
 	offset 76 bit 4 */
 	bool unused_294_4 : 1;
@@ -779,6 +745,7 @@ struct engine_configuration_s {
 	offset 76 bit 22 */
 	bool antiLagEnabled : 1;
 	/**
+	 * For cranking either use the specified fixed base fuel mass, or use the normal running math (VE table).
 	offset 76 bit 23 */
 	bool useRunningMathForCranking : 1;
 	/**
@@ -962,22 +929,31 @@ struct engine_configuration_s {
 	angle_t extraInjectionOffset;
 	/**
 	 * Ignition advance angle used during engine cranking, 5-10 degrees will work as a base setting for most engines.
+	 * There is tapering towards running timing advance
 	 * set cranking_timing_angle X
 	deg
 	 * offset 436
 	 */
 	angle_t crankingTimingAngle;
 	/**
-	 * "Single Coil" is for use on distributed ignition system. "Individual Coils" is to be used when you have one coil per cylinder (COP or similar). "Wasted Spark" means one coil is driving two spark plugs in two cylinders, with one of the sparks not doing anything since it's happening on the exhaust cycle
+	 * Single coil = distributor
+	 * Individual coils = one coil per cylinder (COP, coil-near-plug), requires sequential mode
+	 * Wasted spark = Fires pairs of cylinders together, either one coil per pair of cylinders or one coil per cylinder
+	 * Two distributors = A pair of distributors, found on some BMW, Toyota and other engines
 	 * set ignition_mode X
 	 * offset 440
 	 */
 	ignition_mode_e ignitionMode;
 	/**
-	unused
+	count
 	 * offset 444
 	 */
-	float unusedOldIgnitionOffset;
+	int8_t gapTrackingLengthOverride;
+	/**
+	unused
+	 * offset 445
+	 */
+	int8_t unusedOldIgnitionOffset[3];
 	/**
 	 * Dynamic uses the timing map to decide the ignition timing, Static timing fixes the timing to the value set below (only use for checking static timing with a timing light).
 	 * offset 448
@@ -1117,12 +1093,12 @@ struct engine_configuration_s {
 	 */
 	uint8_t failedMapFallback;
 	/**
-	unit
+	 * Duty cycle to use in case of a sensor failure. This duty cycle should produce the minimum possible amount of boost.
+	%
 	 * offset 542
 	 */
-	uint8_t unused542;
+	uint8_t boostControlSafeDutyCycle;
 	/**
-	 * See hasMafSensor
 	 * offset 543
 	 */
 	adc_channel_e mafAdcChannel;
@@ -1420,8 +1396,8 @@ struct engine_configuration_s {
 	 */
 	pin_input_mode_e throttlePedalUpPinMode;
 	/**
-	 * Additional idle PID offset while A/C is active
-	Percent
+	 * Additional idle % while A/C is active
+	%
 	 * offset 711
 	 */
 	uint8_t acIdleExtraOffset;
@@ -1572,8 +1548,7 @@ struct engine_configuration_s {
 	offset 744 bit 19 */
 	bool stepperForceParkingEveryRestart : 1;
 	/**
-	 * Smarter cranking logic.
-	 * See also startOfCrankingPrimingPulse
+	 * If enabled, try to fire the engine before a full engine cycle has been completed using RPM estimated from the last 90 degrees of engine rotation. As soon as the trigger syncs plus 90 degrees rotation, fuel and ignition events will occur. If disabled, worst case may require up to 4 full crank rotations before any events are scheduled.
 	offset 744 bit 20 */
 	bool isFasterEngineSpinUpEnabled : 1;
 	/**
@@ -1613,6 +1588,7 @@ struct engine_configuration_s {
 	offset 744 bit 30 */
 	bool idleIncrementalPidCic : 1;
 	/**
+	 * AEM X-Series or rusEFI Wideband
 	offset 744 bit 31 */
 	bool enableAemXSeries : 1;
 	/**
@@ -1981,10 +1957,10 @@ struct engine_configuration_s {
 	bool unusedBit_251_29 : 1;
 	/**
 	offset 976 bit 30 */
-	bool unusedBit_288_30 : 1;
+	bool unusedBit_289_30 : 1;
 	/**
 	offset 976 bit 31 */
-	bool unusedBit_288_31 : 1;
+	bool unusedBit_289_31 : 1;
 	/**
 	 * offset 980
 	 */
@@ -2135,10 +2111,14 @@ struct engine_configuration_s {
 	 */
 	uint16_t fuelLevelBins[FUEL_LEVEL_TABLE_COUNT];
 	/**
-	units
 	 * offset 1220
 	 */
-	int unusedAtOldBoardConfigurationEnd[59];
+	output_pin_e luaOutputPins[LUA_PWM_COUNT];
+	/**
+	units
+	 * offset 1228
+	 */
+	int unusedAtOldBoardConfigurationEnd[57];
 	/**
 	kg
 	 * offset 1456
@@ -2280,7 +2260,7 @@ struct engine_configuration_s {
 	 */
 	adc_channel_e hipOutputChannel;
 	/**
-	 *  A/C button input
+	 * A/C button input
 	 * offset 1469
 	 */
 	switch_input_pin_e acSwitch;
@@ -2321,7 +2301,8 @@ struct engine_configuration_s {
 	offset 1476 bit 5 */
 	bool isMapAveragingEnabled : 1;
 	/**
-	 * This setting overrides the normal multiplication values that have been set for the idle air control valve during cranking. If this setting is enabled the "IAC multiplier" table in the Cranking settings tab needs to be adjusted appropriately or potentially no IAC opening will occur.
+	 * If enabled, use separate temperature multiplier table for cranking idle position.
+	 * If disabled, use normal running multiplier table applied to the cranking base position.
 	offset 1476 bit 6 */
 	bool overrideCrankingIacSetting : 1;
 	/**
@@ -2366,11 +2347,13 @@ struct engine_configuration_s {
 	offset 1476 bit 16 */
 	bool useFixedBaroCorrFromMap : 1;
 	/**
-	 * This activates a separate advance table for cranking conditions, this allows cranking advance to be RPM dependant.
+	 * In Constant mode, timing is automatically tapered to running as RPM increases.
+	 * In Table mode, the "Cranking ignition advance" table is used directly.
 	offset 1476 bit 17 */
 	bool useSeparateAdvanceForCranking : 1;
 	/**
 	 * This enables the various ignition corrections during cranking (IAT, CLT, FSIO and PID idle).
+	 * You probably don't need this.
 	offset 1476 bit 18 */
 	bool useAdvanceCorrectionsForCranking : 1;
 	/**
@@ -2420,7 +2403,8 @@ struct engine_configuration_s {
 	 */
 	uint32_t engineChartSize;
 	/**
-	 * Relative to the target idle RPM - this limit is coupled with useIacTableForCoasting and iacCoasting parameters
+	 * How far above idle speed do we consider idling?
+	 * For example, if target = 800, this param = 200, then anything below 1000 RPM is considered idle.
 	RPM
 	 * offset 1484
 	 */
@@ -2693,7 +2677,7 @@ struct engine_configuration_s {
 	 */
 	int16_t startUpFuelPumpDuration;
 	/**
-	 * If RPM is close enough let's leave IAC alone, and maybe engage timing PID correction
+	 * If the RPM closer to target than this value, disable closed loop idle correction to prevent oscillation
 	RPM
 	 * offset 1894
 	 */
@@ -2905,76 +2889,76 @@ struct engine_configuration_s {
 	bool unused1130 : 1;
 	/**
 	offset 2116 bit 8 */
-	bool unusedBit_490_8 : 1;
+	bool unusedBit_492_8 : 1;
 	/**
 	offset 2116 bit 9 */
-	bool unusedBit_490_9 : 1;
+	bool unusedBit_492_9 : 1;
 	/**
 	offset 2116 bit 10 */
-	bool unusedBit_490_10 : 1;
+	bool unusedBit_492_10 : 1;
 	/**
 	offset 2116 bit 11 */
-	bool unusedBit_490_11 : 1;
+	bool unusedBit_492_11 : 1;
 	/**
 	offset 2116 bit 12 */
-	bool unusedBit_490_12 : 1;
+	bool unusedBit_492_12 : 1;
 	/**
 	offset 2116 bit 13 */
-	bool unusedBit_490_13 : 1;
+	bool unusedBit_492_13 : 1;
 	/**
 	offset 2116 bit 14 */
-	bool unusedBit_490_14 : 1;
+	bool unusedBit_492_14 : 1;
 	/**
 	offset 2116 bit 15 */
-	bool unusedBit_490_15 : 1;
+	bool unusedBit_492_15 : 1;
 	/**
 	offset 2116 bit 16 */
-	bool unusedBit_490_16 : 1;
+	bool unusedBit_492_16 : 1;
 	/**
 	offset 2116 bit 17 */
-	bool unusedBit_490_17 : 1;
+	bool unusedBit_492_17 : 1;
 	/**
 	offset 2116 bit 18 */
-	bool unusedBit_490_18 : 1;
+	bool unusedBit_492_18 : 1;
 	/**
 	offset 2116 bit 19 */
-	bool unusedBit_490_19 : 1;
+	bool unusedBit_492_19 : 1;
 	/**
 	offset 2116 bit 20 */
-	bool unusedBit_490_20 : 1;
+	bool unusedBit_492_20 : 1;
 	/**
 	offset 2116 bit 21 */
-	bool unusedBit_490_21 : 1;
+	bool unusedBit_492_21 : 1;
 	/**
 	offset 2116 bit 22 */
-	bool unusedBit_490_22 : 1;
+	bool unusedBit_492_22 : 1;
 	/**
 	offset 2116 bit 23 */
-	bool unusedBit_490_23 : 1;
+	bool unusedBit_492_23 : 1;
 	/**
 	offset 2116 bit 24 */
-	bool unusedBit_490_24 : 1;
+	bool unusedBit_492_24 : 1;
 	/**
 	offset 2116 bit 25 */
-	bool unusedBit_490_25 : 1;
+	bool unusedBit_492_25 : 1;
 	/**
 	offset 2116 bit 26 */
-	bool unusedBit_490_26 : 1;
+	bool unusedBit_492_26 : 1;
 	/**
 	offset 2116 bit 27 */
-	bool unusedBit_490_27 : 1;
+	bool unusedBit_492_27 : 1;
 	/**
 	offset 2116 bit 28 */
-	bool unusedBit_490_28 : 1;
+	bool unusedBit_492_28 : 1;
 	/**
 	offset 2116 bit 29 */
-	bool unusedBit_490_29 : 1;
+	bool unusedBit_492_29 : 1;
 	/**
 	offset 2116 bit 30 */
-	bool unusedBit_490_30 : 1;
+	bool unusedBit_492_30 : 1;
 	/**
 	offset 2116 bit 31 */
-	bool unusedBit_490_31 : 1;
+	bool unusedBit_492_31 : 1;
 	/**
 	 * set can_mode X
 	 * offset 2120
@@ -3110,10 +3094,11 @@ struct engine_configuration_s {
 	 */
 	fsio_pwm_freq_t auxPidFrequency[CAMS_PER_BANK];
 	/**
-	units
+	 * Additional idle % when fan #1 is active
+	%
 	 * offset 2246
 	 */
-	uint8_t unused1301;
+	uint8_t fan1ExtraIdle;
 	/**
 	 * need 4 byte alignment
 	units
@@ -3151,10 +3136,16 @@ struct engine_configuration_s {
 	 */
 	uint8_t vvtModePadding[CAMS_PER_BANK_padding];
 	/**
-	units
+	 * Additional idle % when fan #2 is active
+	%
 	 * offset 2322
 	 */
-	uint8_t unusedOldBiquad[22];
+	uint8_t fan2ExtraIdle;
+	/**
+	units
+	 * offset 2323
+	 */
+	uint8_t unusedOldBiquad[21];
 	/**
 	 * CLT-based timing correction
 	C
@@ -3175,6 +3166,9 @@ struct engine_configuration_s {
 	 */
 	pin_output_mode_e LIS302DLCsPinMode;
 	/**
+	 * None = I have a MAP-referenced fuel pressure regulator
+	 * Fixed rail pressure = I have an atmosphere-referenced fuel pressure regulator (returnless, typically)
+	 * Sensed rail pressure = I have a fuel pressure sensor
 	 * offset 2410
 	 */
 	injector_compensation_mode_e injectorCompensationMode;
@@ -3248,9 +3242,10 @@ struct engine_configuration_s {
 	uint8_t unused2536[4];
 	/**
 	 * per-cylinder timing correction
+	deg
 	 * offset 2532
 	 */
-	cfg_float_t_1f timing_offset_cylinder[IGNITION_PIN_COUNT];
+	angle_t timing_offset_cylinder[IGNITION_PIN_COUNT];
 	/**
 	seconds
 	 * offset 2580
@@ -3645,6 +3640,10 @@ struct engine_configuration_s {
 	spi_device_e tle6240spiDevice;
 	/**
 	 * Stoichiometric ratio for your primary fuel. When Flex Fuel is enabled, this value is used when the Flex Fuel sensor indicates E0.
+	 * E0 = 14.7
+	 * E10 = 14.1
+	 * E85 = 9.9
+	 * E100 = 9.0
 	:1
 	 * offset 3977
 	 */
@@ -3659,7 +3658,7 @@ struct engine_configuration_s {
 	 */
 	spi_device_e mc33972spiDevice;
 	/**
-	 * Stoichiometric ratio for your secondary fuel. This value is used when the Flex Fuel sensor indicates E100.
+	 * Stoichiometric ratio for your secondary fuel. This value is used when the Flex Fuel sensor indicates E100, typically 9.0
 	:1
 	 * offset 3981
 	 */
@@ -3670,7 +3669,7 @@ struct engine_configuration_s {
 	 */
 	uint8_t unusedSpiPadding8[2];
 	/**
-	 *  ETB idle authority
+	 * This sets the range of the idle control on the ETB. At 100% idle position, the value specified here sets the base ETB position.
 	%
 	 * offset 3984
 	 */
@@ -3809,14 +3808,17 @@ struct engine_configuration_s {
 	 */
 	uint8_t alignmentFill_at_4511[1];
 	/**
-	units
+	ratio
 	 * offset 4512
 	 */
-	int mainUnusedEnd[365];
+	float triggerGapOverride[GAP_TRACKING_LENGTH];
+	/**
+	units
+	 * offset 4584
+	 */
+	int mainUnusedEnd[347];
 	/** total size 5972*/
 };
-
-typedef struct engine_configuration_s engine_configuration_s;
 
 // start of persistent_config_s
 struct persistent_config_s {
@@ -4081,10 +4083,9 @@ struct persistent_config_s {
 	 */
 	float vvtTable2RpmBins[FSIO_TABLE_8];
 	/**
-	units
 	 * offset 16004
 	 */
-	uint8_t unused15136[256];
+	lua_script_t luaScript;
 	/**
 	 * offset 16260
 	 */
@@ -4204,7 +4205,5 @@ struct persistent_config_s {
 	/** total size 19972*/
 };
 
-typedef struct persistent_config_s persistent_config_s;
-
 // end
-// this section was generated automatically by rusEFI tool ConfigDefinition.jar based on kinetis_gen_config.bat integration/rusefi_config.txt Wed May 05 14:58:36 UTC 2021
+// this section was generated automatically by rusEFI tool ConfigDefinition.jar based on kinetis_gen_config.bat integration/rusefi_config.txt Wed Jun 02 05:29:53 UTC 2021

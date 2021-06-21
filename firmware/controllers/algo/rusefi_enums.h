@@ -200,6 +200,9 @@ typedef enum {
 	HELLEN_134_BMW = ET_HELLEN_134_BMW,
 	HELLEN_154_VAG = ET_HELLEN_154_VAG,
 
+	HELLEN_121_VAG_5_CYL = ET_HELLEN_121_VAG_5_CYL,
+	HELLEN_121_VAG_6_CYL = ET_HELLEN_121_VAG_6_CYL,
+	HELLEN_121_VAG_8_CYL = ET_HELLEN_121_VAG_8_CYL,
 
 	/**
 	 * this configuration has as few pins configured as possible
@@ -932,31 +935,6 @@ typedef enum {
 } can_nbc_e;
 
 typedef enum {
-	NOT_READY,
-	/**
-	 * the step after this one is always IS_INTEGRATING
-	 * We only integrate if we have RPM
-	 */
-	READY_TO_INTEGRATE,
-	/**
-	 * the step after this one is always WAITING_FOR_ADC_TO_SKIP
-	 */
-	IS_INTEGRATING,
-	/**
-	 * the step after this one is always WAITING_FOR_RESULT_ADC
-	 */
-	WAITING_FOR_ADC_TO_SKIP,
-	/**
-	 * the step after this one is always IS_SENDING_SPI_COMMAND or READY_TO_INTEGRATE
-	 */
-	WAITING_FOR_RESULT_ADC,
-	/**
-	 * the step after this one is always READY_TO_INTEGRATE
-	 */
-	IS_SENDING_SPI_COMMAND,
-} hip_state_e;
-
-typedef enum {
 	TCHARGE_MODE_RPM_TPS = 0,
 	TCHARGE_MODE_AIR_INTERP = 1,
 	Force_4bytes_size_tChargeMode_e = ENUM_32_BITS,
@@ -1022,6 +1000,7 @@ typedef enum __attribute__ ((__packed__)) {
 	GPPWM_AuxTemp1 = 6,
 	GPPWM_AuxTemp2 = 7,
 	GPPWM_Zero = 8,
+	GPPWM_AccelPedal = 9,
 } gppwm_channel_e;
 
 typedef enum __attribute__ ((__packed__)) {

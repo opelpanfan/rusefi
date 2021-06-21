@@ -35,6 +35,9 @@ public class ConfigDefinition {
     private static final String KEY_C_FSIO_NAMES = "-c_fsio_names";
     private static final String KEY_C_FSIO_STRING = "-c_fsio_strings";
     private static final String KEY_C_DEFINES = "-c_defines";
+    /**
+     * @see CHeaderConsumer#withC_Defines
+     */
     private static final String KEY_WITH_C_DEFINES = "-with_c_defines";
     private static final String KEY_JAVA_DESTINATION = "-java_destination";
     private static final String KEY_ROMRAIDER_DESTINATION = "-romraider_destination";
@@ -46,6 +49,11 @@ public class ConfigDefinition {
     public static final String KEY_CACHE_ZIP_FILE = "-cache_zip_file";
     private static final String KEY_ZERO_INIT = "-initialize_to_zero";
     private static final String KEY_BOARD_NAME = "-board";
+    /**
+     * This flag controls if we assign default zero value (useful while generating structures used for class inheritance)
+     * versus not assigning default zero value like we need for non-class headers
+     * This could be related to configuration header use-case versus "live data" (not very alive idea) use-case
+     */
     public static boolean needZeroInit = true;
     public static String definitionInputFile = null;
 
@@ -94,6 +102,7 @@ public class ConfigDefinition {
         String cacheZipFile = null;
         String signatureDestination = null;
         String signaturePrependFile = null;
+        List<String> enumInputFiles = new ArrayList<>();
         CHeaderConsumer.withC_Defines = true;
         File[] yamlFiles = null;
 
@@ -164,10 +173,7 @@ public class ConfigDefinition {
                     signatureDestination = args[i + 1];
                     break;
                 case EnumToString.KEY_ENUM_INPUT_FILE:
-                    String inputFile = args[i + 1];
-                    // todo: 1) can we 2) should we move this relatively heavy processing after we've checked if generation is needed?
-                    state.enumsReader.process(".", inputFile);
-                    SystemOut.println(state.enumsReader.getEnums() + " total enumsReader");
+                    enumInputFiles.add(args[i + 1]);
                     break;
                 case KEY_CACHE:
                     cachePath = args[i + 1];
@@ -210,6 +216,14 @@ public class ConfigDefinition {
         if (!needToUpdateTsFiles && !needToUpdateOtherFiles) {
             SystemOut.println("All output files are up-to-date, nothing to do here!");
             return;
+        }
+
+        if (!enumInputFiles.isEmpty()) {
+            for (String ef : enumInputFiles) {
+                state.enumsReader.process(".", ef);
+            }
+
+            SystemOut.println(state.enumsReader.getEnums() + " total enumsReader");
         }
 
         long crc32 = signatureHash(tsPath, inputAllFiles);
@@ -353,20 +367,21 @@ public class ConfigDefinition {
         SystemOut.println(data);
         Objects.requireNonNull(data, "data");
         for (Map<String, Object> pin : data) {
-            if (pin.get("id") instanceof ArrayList) {
-                ArrayList IDs = (ArrayList) pin.get("id");
+            Object idObject = pin.get("id");
+            if (idObject instanceof ArrayList) {
+                ArrayList IDs = (ArrayList) idObject;
+                Object classes = pin.get("class");
+                if (!(classes instanceof ArrayList))
+                    throw new IllegalStateException("Expected multiple classes for " + IDs);
                 for (int i = 0; i < IDs.size(); i++) {
                     String id = (String) IDs.get(i);
-                    Object classes = pin.get("class");
-                    if (!(classes instanceof ArrayList))
-                        throw new IllegalStateException("Expected multiple classes for " + IDs);
                     findMatchingEnum(id,
                             (String) pin.get("ts_name"),
                             (String) ((ArrayList) classes).get(i),
                             state, listOutputs, listAnalogInputs, listEventInputs, listSwitchInputs);
                 }
-            } else if (pin.get("id") instanceof String ) {
-                findMatchingEnum((String) pin.get("id"), (String) pin.get("ts_name"), (String) pin.get("class"), state, listOutputs, listAnalogInputs, listEventInputs, listSwitchInputs);
+            } else if (idObject instanceof String ) {
+                findMatchingEnum((String) idObject, (String) pin.get("ts_name"), (String) pin.get("class"), state, listOutputs, listAnalogInputs, listEventInputs, listSwitchInputs);
             }
         }
     }

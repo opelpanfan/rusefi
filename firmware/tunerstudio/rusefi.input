@@ -179,8 +179,7 @@ enable2ndByteCanID = false
 ; Bit flags
 	  hasSdCard       = bits,    U32,      0,    [0:0], "true", "false";
 	  isIgnitionEnabledIndicator=bits,U32, 0,    [1:1], "true", "false";
-	  isInjectionEnabledIndicator=bits,U32,      0,    [2:2], "true", "false";
-	  isCylinderCleanupEnabled=bits,U32,   0,    [3:3], "true", "false";
+	  isInjectionEnabledIndicator=bits,U32,0,    [2:2], "true", "false";
 	  isCylinderCleanupActivated=bits,U32, 0,    [4:4], "true", "false";
 	  ind_fuel_pump   = bits,    U32,      0,    [5:5], "true", "false";
 	  ind_fan         = bits,    U32,      0,    [6:6], "true", "false";
@@ -206,6 +205,7 @@ enable2ndByteCanID = false
 	  ind_pedal_error  =bits,    U32,      0,  [26:26], "true", "false";
 	  isTps2Error     = bits,    U32,      0,  [29:29], "true", "false";
 	  isIdleClosedLoop= bits,    U32,      0,  [30:30], "true", "false";
+	  isIdleCoasting  = bits,    U32,      0,  [31:31], "true", "false";
 
 ; RPM, vss
       RPMValue        = scalar,  U16,      4,      "RPM",    1,   0.00000
@@ -232,7 +232,6 @@ enable2ndByteCanID = false
       MAPValue        = scalar,  U16,     30,     "kPa",{1/@@PACK_MULT_PRESSURE@@},       0.0
       baroPressure    = scalar,  U16,     32,     "kPa",{1/@@PACK_MULT_PRESSURE@@},       0.0
       lambdaValue     = scalar,  U16,     34,      "",{1/@@PACK_MULT_LAMBDA@@},       0.0
-      engineLoad      = scalar,  U16,     36,        "%",{1/@@PACK_MULT_PERCENT@@},       0.0 ; Blend of MAP and TPS, depends on algorithm
 
 ; misc sensors
       VBatt           = scalar,	 U16,     38,        "V",{1/@@PACK_MULT_VOLTAGE@@},       0.0
@@ -259,7 +258,8 @@ enable2ndByteCanID = false
       iatCorrection   = scalar,  S16,     64,        "%",{1/@@PACK_MULT_PERCENT@@},         0
       cltCorrection   = scalar,  S16,     66,        "%",{1/@@PACK_MULT_PERCENT@@},         0
       baroCorrection  = scalar,  S16,     68,        "%",{1/@@PACK_MULT_PERCENT@@},         0
-      fuelPidCorrection=scalar,  S16,     70,       "%",{1/@@PACK_MULT_PERCENT@@},         0
+      fuelPidCorrection=scalar,  S16,    296,       "%",{1/@@PACK_MULT_PERCENT@@},         0
+	  fuelPidCorrection2=scalar, S16,    298,       "%",{1/@@PACK_MULT_PERCENT@@},         0
 
 ; Wall model AE
       wallFuelAmount  = scalar,  U16,     72,     "ms",{1/@@PACK_MULT_MS@@},         0
@@ -1070,6 +1070,7 @@ gaugeCategory = Fueling
    fuelRunningGauge     = fuelRunning,       @@GAUGE_NAME_FUEL_RUNNING@@,      "mg",        0,   100,     0,    0,      100,    100,   3, 1
    baseFuelGauge     = baseFuel,       @@GAUGE_NAME_FUEL_BASE@@,      "mg",        0,   100, 0, 0, 100, 100,   2, 0
    fuelPidCorrectionGauge = fuelPidCorrection,       @@GAUGE_NAME_FUEL_TRIM@@,      "%",        -10,   10,     -8, -5, 5, 8,   3, 1
+   fuelPidCorrectionGauge2= fuelPidCorrection2,      @@GAUGE_NAME_FUEL_TRIM_2@@,      "%",        -10,   10,     -8, -5, 5, 8,   3, 1
    fuelingLoadGauge = fuelingLoad, @@GAUGE_NAME_FUEL_LOAD@@, "%", 0, 300, 0, 0, 300, 300, 1, 1
    totalFuelConsumptionGauge = totalFuelConsumption, @@GAUGE_NAME_FUEL_CONSUMPTION@@, "g", 0, 10000, 0, 0, 10000, 10000, 0, 0
    fuelFlowRateGauge = fuelFlowRate, @@GAUGE_NAME_FUEL_FLOW@@, "g/s", 0, 50, 0, 0, 50, 50, 2, 0
@@ -1197,7 +1198,8 @@ gaugeCategory = DynoView
     indicator = { clutchDownState }, "clutch",   "cltch Down",   white, black, yellow,   black
     indicator = { brakePedalIndicator }, "brake",   "brake down",   white, black, red,   black
     indicator = { acSwitchState }, "AC off",   "AC on",   white, black, blue,   white
-	indicator = { isIdleClosedLoop }, "idle open loop", "idle closed loop", white, black, green, black
+	indicator = { isIdleClosedLoop }, "not idling", "idling", white, black, green, black
+	indicator = { isIdleCoasting }, "not coasting", "coasting", white, black, green, black
 
     ; error codes
     indicator = { isTpsError}, "tps",   "tps error",   white, black, red,   black
@@ -1238,7 +1240,6 @@ gaugeCategory = DynoView
    entry = lambdaValue,     @@GAUGE_NAME_LAMBDA@@,     float,  "%.2f"
    entry = lambdaValue2,     @@GAUGE_NAME_LAMBDA2@@,    float,  "%.2f"
    entry = VBatt,           @@GAUGE_NAME_VBAT@@,       float,  "%.2f"
-   entry = engineLoad,	    @@GAUGE_NAME_ENGINE_LOAD@@, 	   float,  "%.1f"
    entry = fuelingLoad,     @@GAUGE_NAME_FUEL_LOAD@@,     float, "%.1f"
    entry = ignitionLoad,    @@GAUGE_NAME_IGNITION_LOAD@@, float, "%.1f"
    entry = ignitionAdvance,	@@GAUGE_NAME_TIMING_ADVANCE@@,	   float,  "%.2f"
@@ -1262,6 +1263,7 @@ gaugeCategory = DynoView
    entry = actualLastInjection,     @@GAUGE_NAME_FUEL_LAST_INJECTION@@, float,  "%.3f"
    entry = baseFuel,	    @@GAUGE_NAME_FUEL_BASE@@,  float,  "%.2f"
    entry = fuelPidCorrection,@@GAUGE_NAME_FUEL_TRIM@@,  float,  "%.2f"
+   entry = fuelPidCorrection2,@@GAUGE_NAME_FUEL_TRIM_2@@,  float,  "%.2f"
    entry = veValue,         @@GAUGE_NAME_FUEL_VE@@,    float,  "%.3f"
    entry = injectorDutyCycle,@@GAUGE_NAME_FUEL_INJ_DUTY@@,float,"%.3f"
    entry = coilDutyCycle,	@@GAUGE_NAME_DWELL_DUTY@@,	float,"%.3f"
@@ -1374,6 +1376,7 @@ menuDialog = main
 		subMenu = limitsAndFallback,		"Limits and fallbacks"
 		subMenu = triggerConfiguration,		"Trigger"
 		subMenu = triggerConfiguration_IO, "Advanced Trigger"
+		subMenu = triggerConfiguration_gap, "Trigger Gap Override"
 		subMenu = std_separator
 		subMenu = energySystems,			"Battery and alternator"
 		subMenu = std_separator
@@ -1441,6 +1444,8 @@ menuDialog = main
 		
 	menu = "&Cranking"
 		subMenu = crankingDialog,			"Cranking settings"
+		subMenu = postCrankingEnrichment,	"After-start enrichment"
+		subMenu = primingFuelPulsePanel,	"Priming pulse"
 		subMenu = std_separator
 
 		subMenu = crankingCltCurve,			"Fuel CLT multiplier"
@@ -1448,10 +1453,10 @@ menuDialog = main
 		subMenu = crankingTpsCurve,			"Fuel TPS multiplier"
 		subMenu = std_separator
 
-		subMenu = crankingAdvanceCurve,		"Ignition advance", 0, {useSeparateAdvanceForCranking == 1}
+		subMenu = crankingAdvanceCurve,		"Cranking ignition advance", 0, {useSeparateAdvanceForCranking == 1}
 		subMenu = std_separator
 
-		subMenu = cltCrankingCurve,			"IAC multiplier", 0, {overrideCrankingIacSetting == 1}	
+		subMenu = cltCrankingCurve,			"Cranking IAC CLT multiplier", 0, {overrideCrankingIacSetting == 1}	
 		
 	menu = "&Idle"
 		subMenu = idleSettings,				"Idle settings"
@@ -1502,6 +1507,9 @@ menuDialog = main
 		subMenu = fsioCurve2,			    "FSIO Curve #2"
 		subMenu = fsioCurve3,			    "FSIO Curve #3"
 		subMenu = fsioCurve4,			    "FSIO Curve #4"
+
+		subMenu = std_separator
+		subMenu = luaOutputs,			"Lua PWM Outputs"
 
 		subMenu = std_separator
 		subMenu = tcuControls,			"Transmission Settings"
@@ -1567,7 +1575,7 @@ menuDialog = main
 		subMenu = canBusMain,				"CAN Bus Communication"
 		subMenu = sdCard,					"SD Card Logger" @@if_ts_show_sd_card
 		subMenu = connection,            	"Connection"
-		subMenu = tle8888,					"TLE8888"
+		subMenu = tle8888,					"TLE8888" @@if_ts_show_tle8888
 
 		subMenu = allPins1,					"Full pinout 1/3" @@if_ts_show_full_pinout
 		subMenu = allPins2,					"Full pinout 2/3" @@if_ts_show_full_pinout
@@ -1576,20 +1584,19 @@ menuDialog = main
 
 
 		# EXPERIMENTAL FEATURES
-		subMenu = parkingLot,				"Experimental/Broken"
-		subMenu = mc33Dialog,			"GDI Dreams"
-		subMenu = std_separator
+		subMenu = parkingLot,				"Experimental/Broken" @@if_ts_show_experimental
+		subMenu = mc33Dialog,			"GDI Dreams" @@if_ts_show_experimental
+		subMenu = std_separator	 @@if_ts_show_experimental
 		
 		subMenu = hipFunction,				"HIP9011 settings (knock sensor) (alpha version)" @@if_ts_show_hip9011
 		subMenu = softwareKnock,			"Software Knock" @@if_ts_show_software_knock
 		subMenu = std_separator
 
-		subMenu = smLaunchControl,			"Launch Control"
+		subMenu = smLaunchControl,			"Launch Control" @@if_ts_show_launchcontrol
 		subMenu = std_separator
-#		subMenu = smRollingLaunch,			"Rolling Launch"
-#		subMenu = std_separator
-#		subMenu = antiLag,        			"Antilag Setup"
-#		subMenu = std_separator
+		subMenu = smRollingLaunch,			"Rolling Launch" @@if_ts_show_rollinglaunch
+		subMenu = std_separator
+		subMenu = antiLag,        			"Antilag Setup" @@if_ts_show_antiLag
 
 
       menu = "Help"
@@ -1830,6 +1837,15 @@ cmd_set_engine_type_default					= "@@TS_IO_TEST_COMMAND_char@@\x00\x31\x00\x00"
 	    field = "Trigger Angle Advance",         		globalTriggerAngleOffset
 	    field = "Display logic signals",				displayLogicLevelsInEngineSniffer
 
+	dialog = triggerConfiguration_gap, "Trigger Gap Override"
+		field = "!This is a pretty advanced feature for when you are debugging trigger syncronizaion"
+		field = "Override well known trigger gaps",    overrideTriggerGaps
+		field = gapTrackingLengthOverride,				gapTrackingLengthOverride, { overrideTriggerGaps == 1 }
+		field = "First gap",							triggerGapOverride1, { overrideTriggerGaps == 1 }
+		field = "Second gap",							triggerGapOverride2, { overrideTriggerGaps == 1 }
+		field = "Third gap",							triggerGapOverride3, { overrideTriggerGaps == 1 }
+		
+
 	dialog = triggerConfiguration_IO,	"Advanced Trigger"
 	    field = "!https://rusefi.com/s/vvt"
 ; todo: code generator to hard-code all triggers not requiring VVT?
@@ -1994,7 +2010,8 @@ cmd_set_engine_type_default					= "@@TS_IO_TEST_COMMAND_char@@\x00\x31\x00\x00"
 	dialog = multisparkSettings, "Multispark"
 		field = "#WARNING! These settings have the potential to overheat ignition components"
 		field = "#and cause other nasty misbehavior.  Use with care, at your own risk!"
-		field = "Enable Multiple Sparks",				multisparkEnable
+		field = "#Not recommended for use on distributor or wasted spark ignition systems."
+		field = "Enable multiple sparks",				multisparkEnable
 		panel = multisparkMain
 		panel = multisparkDwellParams
 
@@ -2606,13 +2623,19 @@ cmd_set_engine_type_default					= "@@TS_IO_TEST_COMMAND_char@@\x00\x31\x00\x00"
 		field = "use Cic Pid",							useCicPidForIdle
 		field = "Use IAC PID Multiplier Table",			useIacPidMultTable
 
+	dialog = idleOpenLoop, "Open Loop Idle"
+		slider = "Open loop base position",				manIdlePosition, horizontal
+		field = "A/C adder",							acIdleExtraOffset
+		field = "Fan #1 adder",							fan1ExtraIdle
+		;field = "Fan #2 adder",						fan2ExtraIdle
+		field = "Extra idle air if throttle pressed",	iacByTpsTaper
+
 	dialog = idleGating, "Idle Detection Thresholds"
 		field = "TPS threshold",	idlePidDeactivationTpsThreshold
 		field = "RPM upper limit",	idlePidRpmUpperLimit
-		field = "RPM dead zone",	idlePidRpmDeadZone
+		field = "RPM deadzone",	idlePidRpmDeadZone
 
 	dialog = idleExtra, "Extra Idle Features"
-		field = "Extra idle air if throttle pressed",						iacByTpsTaper
 		field = "Use idle ignition table",	useSeparateAdvanceForIdle
 		field = "Use idle VE table",		useSeparateVeForIdle
 		field = "Use coasting idle table",	useIacTableForCoasting, {idleMode == 0}
@@ -2622,11 +2645,10 @@ cmd_set_engine_type_default					= "@@TS_IO_TEST_COMMAND_char@@\x00\x31\x00\x00"
 	dialog = idleSettings, "", yAxis
 		field = "Idle control mode",					idleMode
 
-		field = "! Solenoid idle control requires above zero RPM"
-		slider = "Open loop idle position",				manIdlePosition, horizontal
-		field = ""
+		field = "! Solenoid idle control is disabled at zero RPM"
 
 		panel = idleGating
+		panel = idleOpenLoop
 		panel = idlePidSettings, { idleMode == 0}
 		panel = idleExtra
 
@@ -2773,26 +2795,26 @@ cmd_set_engine_type_default					= "@@TS_IO_TEST_COMMAND_char@@\x00\x31\x00\x00"
 		field = "Power region load",					stft_minPowerLoad
 
 	dialog = stftPartitionSettingsMain, "Main Region", xAxis
-		field = "Time Const",							stft_cellCfgs4_timeConstant
+		field = "Time const",							stft_cellCfgs4_timeConstant
 		field = "Max add",								stft_cellCfgs4_maxAdd
 		field = "Max remove",							stft_cellCfgs4_maxRemove
 
 	dialog = stftPartitionSettingsIdle, "Idle Region", xAxis
-		field = "Time Const",							stft_cellCfgs1_timeConstant
+		field = "Time const",							stft_cellCfgs1_timeConstant
 		field = "Max add",								stft_cellCfgs1_maxAdd
 		field = "Max remove",							stft_cellCfgs1_maxRemove
 
 	dialog = stftPartitionSettingsPower, "Power Region", xAxis
-		field = "Time Const",							stft_cellCfgs3_timeConstant
+		field = "Time const",							stft_cellCfgs3_timeConstant
 		field = "Max add",								stft_cellCfgs3_maxAdd
 		field = "Max remove",							stft_cellCfgs3_maxRemove
 
 	dialog = stftPartitionSettingsOverrun, "Overrun Region", xAxis
-		field = "Time Const",							stft_cellCfgs2_timeConstant
+		field = "Time const",							stft_cellCfgs2_timeConstant
 		field = "Max add",								stft_cellCfgs2_maxAdd
 		field = "Max remove",							stft_cellCfgs2_maxRemove
 
-	dialog = fuelClosedLoopDialog, "Short-term fuel trim"
+	dialog = fuelClosedLoopDialog, "Closed loop fuel correction"
 		field = "Enabled",								fuelClosedLoopCorrectionEnabled
 
 		field = "Startup delay"							stft_startupDelay, {fuelClosedLoopCorrectionEnabled == 1}
@@ -3026,19 +3048,16 @@ cmd_set_engine_type_default					= "@@TS_IO_TEST_COMMAND_char@@\x00\x31\x00\x00"
 		field = "Fuel Source For Cranking",             useRunningMathForCranking
 		field = "Base fuel mass", 				cranking_baseFuel, {useRunningMathForCranking == 0}
 
-	dialog = crankingIAC, "IAC"
-		field = "Cranking IAC position",					crankingIACposition
-		field = "After cranking IAC taper duration",	afterCrankingIACtaperDuration
-		field = "Override IAC multiplier for cranking",	overrideCrankingIacSetting
-		
+	dialog = crankingIAC, "Idle air valve"
+		field = "Cranking base IAC position",			crankingIACposition
+		field = "After cranking IAC taper duration",afterCrankingIACtaperDuration
+		field = "Override cranking IAC CLT multiplier",		overrideCrankingIacSetting
+
 	dialog = crankingIgnition, "Ignition"
-		field = "Advance", 								crankingTimingAngle, {useSeparateAdvanceForCranking == 0}
-		field = "Use separate Advance Table for cranking",	useSeparateAdvanceForCranking
-		field = "Use Advance Corrections for cranking",	useAdvanceCorrectionsForCranking
-        field = "Use fixed cranking dwell",         			useConstantDwellDuringCranking
+		field = "Timing Advance mode",	useSeparateAdvanceForCranking
+		field = "Fixed cranking advance",	crankingTimingAngle, {useSeparateAdvanceForCranking == 0}
         field = "Fixed Cranking Dwell",           			ignitionDwellForCrankingMs, {useConstantDwellDuringCranking == 1}
-		field = "Cranking Dwell Angle", 						crankingChargeAngle, {useConstantDwellDuringCranking == 0}
-	
+
 	dialog = postCrankingEnrichment, "After start enrichment"
 		field = "Post-Cranking factor", 				postCrankingFactor
 		field = "Duration", 				postCrankingDurationSec
@@ -3046,19 +3065,21 @@ cmd_set_engine_type_default					= "@@TS_IO_TEST_COMMAND_char@@\x00\x31\x00\x00"
 	dialog = primingFuelPulsePanel, "Priming fuel pulse"
 		field = "Duration at -40C degrees",	startOfCrankingPrimingPulse
 		field = "Falloff temperature", primeInjFalloffTemperature
-		
-		
+
+	dialog = crankingAdv, "Advanced"
+		field = "Enable flood clear",				isCylinderCleanupEnabled
+		field = "Enable faster engine spin-up",			isFasterEngineSpinUpEnabled
+		field = "Use Advance Corrections for cranking",	useAdvanceCorrectionsForCranking
+		field = "Dwell Duration Mode",         			useConstantDwellDuringCranking
+		field = "Cranking Dwell Angle", 						crankingChargeAngle, {useConstantDwellDuringCranking == 0}
+
 ;			Cranking->Cranking Settings
 	dialog = crankingDialog, "Cranking Settings"
 		field = "Cranking RPM limit",                	cranking_rpm
-		field = "Enable cylinder cleanup",				isCylinderCleanupEnabled
-		field = ""
-		field = "Enable faster engine spin-up",			isFasterEngineSpinUpEnabled
-		panel = primingFuelPulsePanel
 		panel = crankingFuel
 		panel = crankingIgnition
 		panel = crankingIAC
-		panel = postCrankingEnrichment
+		panel = crankingAdv
 
 	dialog = EngineLoadAccelPanel, "Engine Load (alpha version)"
 		field = "Length",						engineLoadAccelLength
@@ -3199,6 +3220,19 @@ cmd_set_engine_type_default					= "@@TS_IO_TEST_COMMAND_char@@\x00\x31\x00\x00"
 		field = "ADC #3",								fsioAdc3
 		field = "ADC #4",								fsioAdc4
 
+	dialog = luaOutputs, "Lua Outputs"
+		field = "#Call startPwm to initialize, then call"
+		field = "#setPwmDuty and setPwmFreq to vary duty/freq"
+		field = "#See rusefi.com/s/lua for more info"
+		field = "output #0", 							luaOutputPins1
+		field = "output #1", 							luaOutputPins2
+		field = "output #2", 							luaOutputPins3
+		field = "output #3", 							luaOutputPins4
+		field = "output #4", 							luaOutputPins5
+		field = "output #5", 							luaOutputPins6
+		field = "output #6", 							luaOutputPins7
+		field = "output #7", 							luaOutputPins8
+
 	dialog = transmissionPanel
 		field = "TCU Enabled"		tcuEnabled
 
@@ -3236,6 +3270,7 @@ cmd_set_engine_type_default					= "@@TS_IO_TEST_COMMAND_char@@\x00\x31\x00\x00"
 		field = "Output Mode",                      boostControlPinMode, { isBoostControlEnabled }
 		field = "Frequency",						boostPwmFrequency, { isBoostControlEnabled }
 
+		field = "Safe duty cycle",					boostControlSafeDutyCycle, { isBoostControlEnabled }
          dialog = boostDialog, "", border
                 panel = boost_left, West
                 panel = boostTableTbl, Center
@@ -3598,4 +3633,4 @@ cmd_set_engine_type_default					= "@@TS_IO_TEST_COMMAND_char@@\x00\x31\x00\x00"
  addTool = afrTableGenerator, "AFR Table Generator", afrTableTbl
 #endif
 
-; poke @dbh97
+; poke
