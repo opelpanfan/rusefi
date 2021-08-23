@@ -11,12 +11,9 @@
  * @author Andrey Belomutskiy, (c) 2012-2020
  */
 
-#include "global.h"
-#include "fsio_impl.h"
-#include "allsensors.h"
-#include "sensor.h"
+#include "pch.h"
 
-EXTERN_ENGINE;
+#include "fsio_impl.h"
 
 #if EFI_PROD_CODE
 
@@ -27,10 +24,6 @@ EXTERN_ENGINE;
 #if EFI_FSIO
 
 #include "os_access.h"
-#include "settings.h"
-#include "rpm_calculator.h"
-#include "efi_gpio.h"
-#include "pwm_generator_logic.h"
 
 /**
  * in case of zero frequency pin is operating as simple on/off. '1' for ON and '0' for OFF
@@ -79,14 +72,8 @@ static LENameOrdinalPair leFuelRate(LE_METHOD_FUEL_FLOW_RATE, "fuel_flow");
 
 #include "fsio_names.def"
 
-#define LE_EVAL_POOL_SIZE 32
-
-static LECalculator evalCalc;
-static LEElement evalPoolElements[LE_EVAL_POOL_SIZE];
-static LEElementPool evalPool(evalPoolElements, LE_EVAL_POOL_SIZE);
-
-#define SYS_ELEMENT_POOL_SIZE 128
-#define UD_ELEMENT_POOL_SIZE 128
+#define SYS_ELEMENT_POOL_SIZE 24
+#define UD_ELEMENT_POOL_SIZE 64
 
 static LEElement sysElements[SYS_ELEMENT_POOL_SIZE] CCM_OPTIONAL;
 LEElementPool sysPool(sysElements, SYS_ELEMENT_POOL_SIZE);
@@ -105,9 +92,7 @@ FsioPointers::FsioPointers() : fsioLogics() {
 
 static FsioPointers state;
 
-static LEElement * acRelayLogic;
 static LEElement * fuelPumpLogic;
-static LEElement * alternatorLogic;
 static LEElement * starterRelayDisableLogic;
 
 #if EFI_MAIN_RELAY_CONTROL
@@ -180,9 +165,6 @@ FsioResult getEngineValue(le_action_e action DECLARE_ENGINE_PARAMETER_SUFFIX) {
 
 
 #if EFI_PROD_CODE
-
-#include "pin_repository.h"
-#include "pwm_generator_logic.h"
 
 static void setFsioAnalogInputPin(const char *indexStr, const char *pinName) {
 // todo: reduce code duplication between all "set pin methods"
@@ -458,10 +440,6 @@ static bool updateValueOrWarning(int humanIndex, const char *msg, float *value D
 	}
 }
 
-static void useFsioForServo(int servoIndex DECLARE_ENGINE_PARAMETER_SUFFIX) {
-	updateValueOrWarning(8 + servoIndex, "servo", &engine->fsioState.servoValues[servoIndex] PASS_ENGINE_PARAMETER_SUFFIX);
-}
-
 /**
  * this method should be invoked periodically to calculate FSIO and toggle corresponding FSIO outputs
  */
@@ -498,14 +476,6 @@ void runFsio(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 	 */
 	enginePins.o2heater.setValue(engine->rpmCalculator.isRunning());
 
-	if (isBrainPinValid(CONFIG(acRelayPin))) {
-		setPinState("A/C", &enginePins.acRelay, acRelayLogic PASS_ENGINE_PARAMETER_SUFFIX);
-	}
-
-//	if (isBrainPinValid(CONFIG(alternatorControlPin))) {
-//		setPinState("alternator", &enginePins.alternatorField, alternatorLogic, engine PASS_ENGINE_PARAMETER_SUFFIX);
-//	}
-
 #if EFI_ENABLE_ENGINE_WARNING
 	if (engineConfiguration->useFSIO4ForSeriousEngineWarning) {
 		updateValueOrWarning(MAGIC_OFFSET_FOR_ENGINE_WARNING, "eng warning", &ENGINE(fsioState.isEngineWarning) PASS_ENGINE_PARAMETER_SUFFIX);
@@ -521,39 +491,9 @@ void runFsio(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 	}
 #endif /* EFI_ENABLE_CRITICAL_ENGINE_STOP */
 
-	if (engineConfiguration->useFSIO12ForIdleOffset) {
-		updateValueOrWarning(MAGIC_OFFSET_FOR_IDLE_OFFSET, "idle offset", &ENGINE(fsioState.fsioIdleOffset) PASS_ENGINE_PARAMETER_SUFFIX);
-	}
-	if (engineConfiguration->useFSIO13ForIdleMinValue) {
-		updateValueOrWarning(MAGIC_OFFSET_FOR_IDLE_MIN_VALUE, "idle minValue", &ENGINE(fsioState.fsioIdleMinValue) PASS_ENGINE_PARAMETER_SUFFIX);
-	}
-	if (engineConfiguration->useFSIO15ForIdleRpmAdjustment) {
-		updateValueOrWarning(MAGIC_OFFSET_FOR_IDLE_TARGET_RPM, "RPM target", &ENGINE(fsioState.fsioIdleTargetRPMAdjustment) PASS_ENGINE_PARAMETER_SUFFIX);
-	}
-	if (engineConfiguration->useFSIO16ForTimingAdjustment) {
-		updateValueOrWarning(MAGIC_OFFSET_FOR_TIMING_FSIO, "timing", &ENGINE(fsioState.fsioTimingAdjustment) PASS_ENGINE_PARAMETER_SUFFIX);
-	}
-
 	if (engineConfiguration->useFSIO6ForRevLimiter) {
 		updateValueOrWarning(6, "rpm limit", &ENGINE(fsioState.fsioRpmHardLimit) PASS_ENGINE_PARAMETER_SUFFIX);
 	}
-
-	if (engineConfiguration->useFSIO8ForServo1) {
-		useFsioForServo(0 PASS_ENGINE_PARAMETER_SUFFIX);
-	}
-	if (engineConfiguration->useFSIO9ForServo2) {
-		useFsioForServo(1 PASS_ENGINE_PARAMETER_SUFFIX);
-	}
-	if (engineConfiguration->useFSIO10ForServo3) {
-		useFsioForServo(2 PASS_ENGINE_PARAMETER_SUFFIX);
-	}
-	if (engineConfiguration->useFSIO11ForServo4) {
-		useFsioForServo(3 PASS_ENGINE_PARAMETER_SUFFIX);
-	}
-	if (engineConfiguration->useFSIO12ForServo5) {
-		useFsioForServo(4 PASS_ENGINE_PARAMETER_SUFFIX);
-	}
-
 }
 
 
@@ -572,9 +512,7 @@ static void showFsio(const char *msg, LEElement *element) {
 static void showFsioInfo(void) {
 #if EFI_PROD_CODE || EFI_SIMULATOR
 	efiPrintf("sys used %d/user used %d", sysPool.getSize(), userPool.getSize());
-	showFsio("a/c", acRelayLogic);
 	showFsio("fuel", fuelPumpLogic);
-	showFsio("alt", alternatorLogic);
 
 	for (int i = 0; i < CAM_INPUTS_COUNT ; i++) {
 		brain_pin_e pin = engineConfiguration->auxPidPins[i];
@@ -658,21 +596,6 @@ void applyFsioExpression(const char *indexStr, const char *quotedLine DECLARE_EN
 	showFsioInfo();
 }
 
-static void rpnEval(char *line) {
-#if EFI_PROD_CODE || EFI_SIMULATOR
-	line = unquote(line);
-	efiPrintf("Parsing [%s]", line);
-	evalPool.reset();
-	LEElement * e = evalPool.parseExpression(line);
-	if (e == NULL) {
-		efiPrintf("parsing failed");
-	} else {
-		float result = evalCalc.evaluate("eval", 0, e PASS_ENGINE_PARAMETER_SUFFIX);
-		efiPrintf("Evaluate result: %.2f", result);
-	}
-#endif
-}
-
 ValueProvider3D *getFSIOTable(int index) {
 	switch (index) {
 	default:
@@ -696,10 +619,6 @@ void initFsioImpl(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 	fuelPumpLogic = sysPool.parseExpression(FUEL_PUMP_LOGIC);
 #endif /* EFI_FUEL_PUMP */
 
-	acRelayLogic = sysPool.parseExpression(AC_RELAY_LOGIC);
-
-	alternatorLogic = sysPool.parseExpression(ALTERNATOR_LOGIC);
-	
 #if EFI_MAIN_RELAY_CONTROL
 	if (isBrainPinValid(CONFIG(mainRelayPin)))
 		mainRelayLogic = sysPool.parseExpression(MAIN_RELAY_LOGIC);
@@ -743,7 +662,6 @@ void initFsioImpl(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 	addConsoleActionSS("set_rpn_expression", applyFsioExpression);
 	addConsoleActionFF("set_fsio_setting", setFsioSetting);
 	addConsoleAction("fsioinfo", showFsioInfo);
-	addConsoleActionS("rpn_eval", (VoidCharPtr) rpnEval);
 #endif /* EFI_PROD_CODE || EFI_SIMULATOR */
 
 	fsioTable1.init(config->fsioTable1, config->fsioTable1LoadBins,
@@ -774,10 +692,6 @@ void runHardcodedFsio(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 	// see STARTER_RELAY_LOGIC
 	if (isBrainPinValid(CONFIG(starterRelayDisablePin))) {
 		enginePins.starterRelayDisable.setValue(engine->rpmCalculator.getRpm() < engineConfiguration->cranking.rpm);
-	}
-	// see AC_RELAY_LOGIC
-	if (isBrainPinValid(CONFIG(acRelayPin))) {
-		enginePins.acRelay.setValue(getAcToggle(PASS_ENGINE_PARAMETER_SIGNATURE) && engine->rpmCalculator.getRpm() > 850);
 	}
 	// see FUEL_PUMP_LOGIC
 	if (isBrainPinValid(CONFIG(fuelPumpPin))) {

@@ -1,4 +1,4 @@
-// this section was generated automatically by rusEFI tool ConfigDefinition.jar based on config/boards/subaru_eg33/config/gen_config.sh integration/rusefi_config.txt Mon Jun 21 03:34:48 UTC 2021
+// this section was generated automatically by rusEFI tool ConfigDefinition.jar based on config/boards/subaru_eg33/config/gen_config.sh integration/rusefi_config.txt Sun Aug 22 04:10:35 UTC 2021
 // by class com.rusefi.output.CHeaderConsumer
 // begin
 #pragma once
@@ -436,7 +436,7 @@ struct specs_s {
 	/**
 	 * offset 4
 	 */
-	cylinders_count_t cylindersCount;
+	uint32_t cylindersCount;
 	/**
 	 * offset 8
 	 */
@@ -648,6 +648,29 @@ struct dc_io {
 	/** total size 4*/
 };
 
+// start of vr_threshold_s
+struct vr_threshold_s {
+	/**
+	 * offset 0
+	 */
+	brain_pin_e pin;
+	/**
+	 * offset 1
+	 */
+	uint8_t pad[3];
+	/**
+	rpm
+	 * offset 4
+	 */
+	uint8_t rpmBins[6];
+	/**
+	volts
+	 * offset 10
+	 */
+	uint8_t values[6];
+	/** total size 16*/
+};
+
 // start of engine_configuration_s
 struct engine_configuration_s {
 	/**
@@ -689,14 +712,17 @@ struct engine_configuration_s {
 	offset 76 bit 5 */
 	bool enableFan2WithAc : 1;
 	/**
+	 * Inhibit operation of this fan while the engine is not running.
 	offset 76 bit 6 */
-	bool unused_294_6 : 1;
+	bool disableFan1WhenStopped : 1;
 	/**
+	 * Inhibit operation of this fan while the engine is not running.
 	offset 76 bit 7 */
-	bool unused_294_7 : 1;
+	bool disableFan2WhenStopped : 1;
 	/**
+	 * Enable secondary spark outputs that fire after the primary (rotaries, twin plug engines).
 	offset 76 bit 8 */
-	bool unused_294_8 : 1;
+	bool enableTrailingSparks : 1;
 	/**
 	 * enable cj125verbose/disable cj125verbose
 	offset 76 bit 9 */
@@ -959,10 +985,11 @@ struct engine_configuration_s {
 	 */
 	int8_t gapTrackingLengthOverride;
 	/**
-	unused
+	 * Above this speed, disable closed loop idle control. Set to 0 to disable (allow closed loop idle at any speed).
+	kph
 	 * offset 445
 	 */
-	int8_t unusedOldIgnitionOffset[1];
+	uint8_t maxIdleVss;
 	/**
 	 * Expected oil pressure after starting the engine. If oil pressure does not reach this level within 5 seconds of engine start, fuel will be cut. Set to 0 to disable and always allow starting.
 	kPa
@@ -1089,10 +1116,11 @@ struct engine_configuration_s {
 	 */
 	float idle_derivativeFilterLoss;
 	/**
-	index
+	 * just a temporary solution
+	angle
 	 * offset 520
 	 */
-	int unused520;
+	int trailingSparkAngle;
 	/**
 	 * offset 524
 	 */
@@ -1207,11 +1235,11 @@ struct engine_configuration_s {
 	/**
 	 * offset 624
 	 */
-	output_pin_e injectionPins[INJECTION_PIN_COUNT];
+	output_pin_e injectionPins[MAX_CYLINDER_COUNT];
 	/**
 	 * offset 636
 	 */
-	output_pin_e ignitionPins[IGNITION_PIN_COUNT];
+	output_pin_e ignitionPins[MAX_CYLINDER_COUNT];
 	/**
 	 * offset 648
 	 */
@@ -1278,7 +1306,7 @@ struct engine_configuration_s {
 	 */
 	output_pin_e fanPin;
 	/**
-	 * some cars have a switch to indicate that clutch pedal is all the way down
+	 * Some cars have a switch to indicate that clutch pedal is all the way down
 	 * offset 664
 	 */
 	switch_input_pin_e clutchDownPin;
@@ -1636,11 +1664,9 @@ struct engine_configuration_s {
 	 */
 	uint8_t mc33_hvolt;
 	/**
-	 * Additional idle PID minValue while A/C is active
-	Percent
 	 * offset 761
 	 */
-	uint8_t acIdleExtraMin;
+	uint8_t unused761;
 	/**
 	 * Optional Radiator Fan used with A/C
 	 * offset 762
@@ -1655,10 +1681,22 @@ struct engine_configuration_s {
 	 */
 	pin_output_mode_e gpioPinModes[FSIO_COMMAND_COUNT];
 	/**
+	 * offset 770
+	 */
+	uint8_t unusedpinModesWhereHere[2];
+	/**
+	 * offset 772
+	 */
+	adc_channel_e luaAnalogInputs[LUA_ANALOG_INPUT_COUNT];
+	/**
 	 * todo: more comments
 	 * offset 780
 	 */
 	output_pin_e fsioOutputPins[FSIO_COMMAND_COUNT];
+	/**
+	 * offset 786
+	 */
+	uint8_t unusedOutputWhereHere[10];
 	/**
 	 * offset 796
 	 */
@@ -1755,9 +1793,17 @@ struct engine_configuration_s {
 	 */
 	fsio_pwm_freq_t fsioFrequency[FSIO_COMMAND_COUNT];
 	/**
+	 * offset 844
+	 */
+	int16_t unusedOutputFreqWhereHere[10];
+	/**
 	 * offset 864
 	 */
 	fsio_setting_t fsio_setting[FSIO_COMMAND_COUNT];
+	/**
+	 * offset 888
+	 */
+	int unusedSettings[10];
 	/**
 	 * offset 928
 	 */
@@ -1840,6 +1886,10 @@ struct engine_configuration_s {
 	 */
 	brain_pin_e fsioDigitalInputs[FSIO_COMMAND_COUNT];
 	/**
+	 * offset 958
+	 */
+	uint8_t unusedDigital[10];
+	/**
 	 * offset 968
 	 */
 	brain_input_pin_e vehicleSpeedSensorInputPin;
@@ -1876,10 +1926,10 @@ struct engine_configuration_s {
 	uint8_t multisparkMaxExtraSparkCount;
 	/**
 	offset 976 bit 0 */
-	bool todoClutchUpPinInverted : 1;
+	bool clutchUpPinInverted : 1;
 	/**
 	offset 976 bit 1 */
-	bool todoClutchDownPinInverted : 1;
+	bool clutchDownPinInverted : 1;
 	/**
 	 * If enabled we use two H-bridges to drive stepper idle air valve
 	offset 976 bit 2 */
@@ -1897,6 +1947,7 @@ struct engine_configuration_s {
 	offset 976 bit 6 */
 	bool launchDisableBySpeed : 1;
 	/**
+	 * Read VSS from OEM CAN bus according to selected CAN vehicle configuration.
 	offset 976 bit 7 */
 	bool enableCanVss : 1;
 	/**
@@ -1972,10 +2023,10 @@ struct engine_configuration_s {
 	bool unusedBit_251_29 : 1;
 	/**
 	offset 976 bit 30 */
-	bool unusedBit_291_30 : 1;
+	bool unusedBit_297_30 : 1;
 	/**
 	offset 976 bit 31 */
-	bool unusedBit_291_31 : 1;
+	bool unusedBit_297_31 : 1;
 	/**
 	 * offset 980
 	 */
@@ -2130,10 +2181,25 @@ struct engine_configuration_s {
 	 */
 	output_pin_e luaOutputPins[LUA_PWM_COUNT];
 	/**
-	units
+	 * Angle between cam sensor and VVT zero position
+	 * set vvt_offset X
+	value
 	 * offset 1228
 	 */
-	int unusedAtOldBoardConfigurationEnd[57];
+	float vvtOffsets[CAM_INPUTS_COUNT];
+	/**
+	 * offset 1244
+	 */
+	float vvtOffsetsPadding[CAM_INPUTS_COUNT_padding];
+	/**
+	 * offset 1244
+	 */
+	vr_threshold_s vrThreshold[2];
+	/**
+	units
+	 * offset 1276
+	 */
+	int unusedAtOldBoardConfigurationEnd[45];
 	/**
 	kg
 	 * offset 1456
@@ -2199,9 +2265,8 @@ struct engine_configuration_s {
 	offset 1464 bit 10 */
 	bool useLinearIatSensor : 1;
 	/**
-	 * See fsioTimingAdjustment
 	offset 1464 bit 11 */
-	bool useFSIO16ForTimingAdjustment : 1;
+	bool unusedBitWasHere16 : 1;
 	/**
 	 * Treat milliseconds value as duty cycle value, i.e. 0.5ms would become 50%
 	offset 1464 bit 12 */
@@ -2236,22 +2301,22 @@ struct engine_configuration_s {
 	bool hasFrequencyReportingMapSensor : 1;
 	/**
 	offset 1464 bit 21 */
-	bool useFSIO8ForServo1 : 1;
+	bool unusedBitWasHere1 : 1;
 	/**
 	offset 1464 bit 22 */
-	bool useFSIO9ForServo2 : 1;
+	bool unusedBitWasHere2 : 1;
 	/**
 	offset 1464 bit 23 */
-	bool useFSIO10ForServo3 : 1;
+	bool unusedBitWasHere3 : 1;
 	/**
 	offset 1464 bit 24 */
-	bool useFSIO11ForServo4 : 1;
+	bool unusedBitWasHere4 : 1;
 	/**
 	offset 1464 bit 25 */
-	bool useFSIO12ForServo5 : 1;
+	bool unusedBitWasHere5 : 1;
 	/**
 	offset 1464 bit 26 */
-	bool useFSIO15ForIdleRpmAdjustment : 1;
+	bool unusedBitHere1 : 1;
 	/**
 	 * Sometimes we just have to shut the engine down. Use carefully!
 	offset 1464 bit 27 */
@@ -2262,10 +2327,10 @@ struct engine_configuration_s {
 	bool useFSIO4ForSeriousEngineWarning : 1;
 	/**
 	offset 1464 bit 29 */
-	bool useFSIO12ForIdleOffset : 1;
+	bool unusedBitHere2 : 1;
 	/**
 	offset 1464 bit 30 */
-	bool useFSIO13ForIdleMinValue : 1;
+	bool unusedBitHere3 : 1;
 	/**
 	offset 1464 bit 31 */
 	bool useFSIO6ForRevLimiter : 1;
@@ -2430,21 +2495,18 @@ struct engine_configuration_s {
 	 */
 	int16_t primeInjFalloffTemperature;
 	/**
-	 * At what trigger index should some ignition-related math be executed? This is a performance trick to reduce load on synchronization trigger callback.
-	index
+	mult
 	 * offset 1488
 	 */
-	int ignMathCalculateAtIndex;
+	float turboSpeedSensorMultiplier;
 	/**
-	RPM
 	 * offset 1492
 	 */
-	int16_t acCutoffLowRpm;
+	brain_pin_e camInputsDebug[CAM_INPUTS_COUNT];
 	/**
-	RPM
-	 * offset 1494
+	 * offset 1496
 	 */
-	int16_t acCutoffHighRpm;
+	uint8_t camInputsDebugPadding[CAM_INPUTS_COUNT_padding];
 	/**
 	 * Extra idle target speed when A/C is enabled. Some cars need the extra speed to keep the AC efficient while idling.
 	RPM
@@ -2481,6 +2543,10 @@ struct engine_configuration_s {
 	 * offset 1516
 	 */
 	pin_input_mode_e fsioInputModes[FSIO_COMMAND_COUNT];
+	/**
+	 * offset 1522
+	 */
+	uint8_t unusedFsioInputs[10];
 	/**
 	count
 	 * offset 1532
@@ -2524,14 +2590,28 @@ struct engine_configuration_s {
 	 */
 	float crankingTpsBins[CRANKING_CURVE_SIZE];
 	/**
+	 * Duration in ms or duty cycle depending on selected mode
 	 * offset 1704
 	 */
 	float tachPulseDuractionMs;
 	/**
-	units
+	 * Above this RPM, disable AC. Set to 0 to disable check.
+	rpm
 	 * offset 1708
 	 */
-	int unused1708;
+	uint16_t maxAcRpm;
+	/**
+	 * Above this TPS, disable AC. Set to 0 to disable check.
+	%
+	 * offset 1710
+	 */
+	uint8_t maxAcTps;
+	/**
+	 * Above this CLT, disable AC to prevent overheating the engine. Set to 0 to disable check.
+	deg C
+	 * offset 1711
+	 */
+	uint8_t maxAcClt;
 	/**
 	 * Length of time the deposited wall fuel takes to dissipate after the start of acceleration. 
 	Seconds
@@ -2549,7 +2629,11 @@ struct engine_configuration_s {
 	/**
 	 * offset 1756
 	 */
-	float unused1756;
+	brain_pin_e triggerInputDebugPins[TRIGGER_INPUT_PIN_COUNT];
+	/**
+	 * offset 1759
+	 */
+	brain_input_pin_e turboSpeedSensorInputPin;
 	/**
 	x
 	 * offset 1760
@@ -2773,12 +2857,10 @@ struct engine_configuration_s {
 	 */
 	float tpsAccelEnrichmentThreshold;
 	/**
-	 * Angle between cam sensor and VVT zero position
-	 * set vvt_offset X
-	value
+	v
 	 * offset 2052
 	 */
-	float vvtOffset;
+	float unusedVvtOffsetWasHere;
 	/**
 	cycles
 	 * offset 2056
@@ -2904,76 +2986,76 @@ struct engine_configuration_s {
 	bool unused1130 : 1;
 	/**
 	offset 2116 bit 8 */
-	bool unusedBit_494_8 : 1;
+	bool unusedBit_507_8 : 1;
 	/**
 	offset 2116 bit 9 */
-	bool unusedBit_494_9 : 1;
+	bool unusedBit_507_9 : 1;
 	/**
 	offset 2116 bit 10 */
-	bool unusedBit_494_10 : 1;
+	bool unusedBit_507_10 : 1;
 	/**
 	offset 2116 bit 11 */
-	bool unusedBit_494_11 : 1;
+	bool unusedBit_507_11 : 1;
 	/**
 	offset 2116 bit 12 */
-	bool unusedBit_494_12 : 1;
+	bool unusedBit_507_12 : 1;
 	/**
 	offset 2116 bit 13 */
-	bool unusedBit_494_13 : 1;
+	bool unusedBit_507_13 : 1;
 	/**
 	offset 2116 bit 14 */
-	bool unusedBit_494_14 : 1;
+	bool unusedBit_507_14 : 1;
 	/**
 	offset 2116 bit 15 */
-	bool unusedBit_494_15 : 1;
+	bool unusedBit_507_15 : 1;
 	/**
 	offset 2116 bit 16 */
-	bool unusedBit_494_16 : 1;
+	bool unusedBit_507_16 : 1;
 	/**
 	offset 2116 bit 17 */
-	bool unusedBit_494_17 : 1;
+	bool unusedBit_507_17 : 1;
 	/**
 	offset 2116 bit 18 */
-	bool unusedBit_494_18 : 1;
+	bool unusedBit_507_18 : 1;
 	/**
 	offset 2116 bit 19 */
-	bool unusedBit_494_19 : 1;
+	bool unusedBit_507_19 : 1;
 	/**
 	offset 2116 bit 20 */
-	bool unusedBit_494_20 : 1;
+	bool unusedBit_507_20 : 1;
 	/**
 	offset 2116 bit 21 */
-	bool unusedBit_494_21 : 1;
+	bool unusedBit_507_21 : 1;
 	/**
 	offset 2116 bit 22 */
-	bool unusedBit_494_22 : 1;
+	bool unusedBit_507_22 : 1;
 	/**
 	offset 2116 bit 23 */
-	bool unusedBit_494_23 : 1;
+	bool unusedBit_507_23 : 1;
 	/**
 	offset 2116 bit 24 */
-	bool unusedBit_494_24 : 1;
+	bool unusedBit_507_24 : 1;
 	/**
 	offset 2116 bit 25 */
-	bool unusedBit_494_25 : 1;
+	bool unusedBit_507_25 : 1;
 	/**
 	offset 2116 bit 26 */
-	bool unusedBit_494_26 : 1;
+	bool unusedBit_507_26 : 1;
 	/**
 	offset 2116 bit 27 */
-	bool unusedBit_494_27 : 1;
+	bool unusedBit_507_27 : 1;
 	/**
 	offset 2116 bit 28 */
-	bool unusedBit_494_28 : 1;
+	bool unusedBit_507_28 : 1;
 	/**
 	offset 2116 bit 29 */
-	bool unusedBit_494_29 : 1;
+	bool unusedBit_507_29 : 1;
 	/**
 	offset 2116 bit 30 */
-	bool unusedBit_494_30 : 1;
+	bool unusedBit_507_30 : 1;
 	/**
 	offset 2116 bit 31 */
-	bool unusedBit_494_31 : 1;
+	bool unusedBit_507_31 : 1;
 	/**
 	 * set can_mode X
 	 * offset 2120
@@ -3166,7 +3248,11 @@ struct engine_configuration_s {
 	units
 	 * offset 2331
 	 */
-	uint8_t unusedOldBiquad[21];
+	uint8_t unusedOldBiquad[9];
+	/**
+	 * offset 2340
+	 */
+	output_pin_e trailingCoilPins[MAX_CYLINDER_COUNT];
 	/**
 	 * CLT-based timing correction
 	C
@@ -3232,20 +3318,33 @@ struct engine_configuration_s {
 	 */
 	float postCrankingDurationSec;
 	/**
-	 * todo: finish implementation #332
 	 * offset 2444
 	 */
 	ThermistorConf auxTempSensor1;
 	/**
-	 * todo: finish implementation #332
 	 * offset 2476
 	 */
 	ThermistorConf auxTempSensor2;
 	/**
-	units
+	 * Apply nonlinearity correction below a pulse of this duration. Pulses longer than this duration will receive no adjustment.
+	ms
 	 * offset 2508
 	 */
-	uint8_t unused2508[6];
+	uint16_t applyNonlinearBelowPulse;
+	/**
+	 * offset 2510
+	 */
+	InjectorNonlinearMode injectorNonlinearMode;
+	/**
+	units
+	 * offset 2511
+	 */
+	uint8_t unused2508;
+	/**
+	Deg
+	 * offset 2512
+	 */
+	int16_t knockSamplingDuration;
 	/**
 	Hz
 	 * offset 2514
@@ -3265,7 +3364,7 @@ struct engine_configuration_s {
 	deg
 	 * offset 2540
 	 */
-	angle_t timing_offset_cylinder[IGNITION_PIN_COUNT];
+	angle_t timing_offset_cylinder[MAX_CYLINDER_COUNT];
 	/**
 	seconds
 	 * offset 2588
@@ -3354,10 +3453,14 @@ struct engine_configuration_s {
 	 */
 	pid_s auxPid[CAMS_PER_BANK];
 	/**
-	units
 	 * offset 2652
 	 */
-	uint8_t unused1366[40];
+	float injectorCorrectionPolynomial[8];
+	/**
+	units
+	 * offset 2684
+	 */
+	uint8_t unused1366[8];
 	/**
 	 * offset 2692
 	 */
@@ -3699,7 +3802,7 @@ struct engine_configuration_s {
 	 * Select which fuel correction bank this cylinder belongs to. Group cylinders that share the same O2 sensor
 	 * offset 4016
 	 */
-	uint8_t cylinderBankSelect[INJECTION_PIN_COUNT];
+	uint8_t cylinderBankSelect[MAX_CYLINDER_COUNT];
 	/**
 	units
 	 * offset 4028
@@ -3949,6 +4052,10 @@ struct persistent_config_s {
 	 */
 	le_formula_t fsioFormulas[FSIO_COMMAND_COUNT];
 	/**
+	 * offset 7872
+	 */
+	lua_script_t luaScript;
+	/**
 	 * offset 9872
 	 */
 	le_formula_t timingMultiplier;
@@ -4104,9 +4211,10 @@ struct persistent_config_s {
 	 */
 	float vvtTable2RpmBins[FSIO_TABLE_8];
 	/**
+	L
 	 * offset 16032
 	 */
-	lua_script_t luaScript;
+	float unusedLuaWasHere[64];
 	/**
 	 * offset 16288
 	 */
@@ -4227,4 +4335,4 @@ struct persistent_config_s {
 };
 
 // end
-// this section was generated automatically by rusEFI tool ConfigDefinition.jar based on config/boards/subaru_eg33/config/gen_config.sh integration/rusefi_config.txt Mon Jun 21 03:34:48 UTC 2021
+// this section was generated automatically by rusEFI tool ConfigDefinition.jar based on config/boards/subaru_eg33/config/gen_config.sh integration/rusefi_config.txt Sun Aug 22 04:10:35 UTC 2021

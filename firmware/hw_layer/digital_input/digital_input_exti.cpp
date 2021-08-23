@@ -5,13 +5,10 @@
  * @author Andrey Belomutskiy, (c) 2012-2021
  */
 
-#include "global.h"
+#include "pch.h"
 
 #if HAL_USE_PAL && EFI_PROD_CODE
 #include "digital_input_exti.h"
-#include "efi_gpio.h"
-#include "error_handling.h"
-#include "pin_repository.h"
 
 /**
  * EXTI is a funny thing: you can only use same pin on one port. For example, you can use
@@ -22,6 +19,11 @@
  */
 
 static ioportmask_t ext_used = 0;
+static const char *EXT_USED[16];
+
+void efiExtiInit() {
+	memset(EXT_USED, 0, sizeof(EXT_USED));
+}
 
 // EXT is not able to give you the front direction but you could read the pin in the callback.
 void efiExtiEnablePin(const char *msg, brain_pin_e brainPin, uint32_t mode, palcallback_t cb, void *cb_data) {
@@ -57,6 +59,7 @@ void efiExtiEnablePin(const char *msg, brain_pin_e brainPin, uint32_t mode, palc
 
 	/* mark used */
 	ext_used |= PAL_PORT_BIT(index);
+	EXT_USED[index] = msg;
 }
 
 void efiExtiDisablePin(brain_pin_e brainPin)
@@ -85,4 +88,19 @@ void efiExtiDisablePin(brain_pin_e brainPin)
 	ext_used &= ~PAL_PORT_BIT(index);
 }
 
+digital_input_s* startDigitalCaptureExti(const char *msg, brain_pin_e brainPin) {
+	return nullptr;
+}
+
+#if ! EFI_ICU_INPUTS
+digital_input_s* startDigitalCapture(const char *msg, brain_pin_e brainPin) {
+	return startDigitalCaptureExti(msg, brainPin);
+}
+#endif // EFI_ICU_INPUTS
+
 #endif /* HAL_USE_PAL && EFI_PROD_CODE */
+
+
+
+
+

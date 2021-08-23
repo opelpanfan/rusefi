@@ -59,10 +59,9 @@
  *
  */
 
-#include "global.h"
+#include "pch.h"
 #include "os_access.h"
 
-#include "allsensors.h"
 #include "tunerstudio.h"
 #include "tunerstudio_impl.h"
 
@@ -70,7 +69,6 @@
 #include "flash_main.h"
 
 #include "tunerstudio_io.h"
-#include "tunerstudio_outputs.h"
 #include "malfunction_central.h"
 #include "console_io.h"
 #include "crc.h"
@@ -80,14 +78,10 @@
 #include "electronic_throttle.h"
 
 #include <string.h>
-#include "engine_configuration.h"
 #include "bench_test.h"
 #include "svnversion.h"
-#include "loggingcentral.h"
 #include "status_loop.h"
 #include "mmc_card.h"
-#include "perf_trace.h"
-#include "thread_priority.h"
 
 #include "signature.h"
 
@@ -97,7 +91,8 @@
 
 #if EFI_TUNER_STUDIO
 
-EXTERN_ENGINE;
+/* 1S */
+#define TS_COMMUNICATION_TIMEOUT	TIME_MS2I(1000)
 
 extern persistent_config_container_s persistentState;
 
@@ -430,31 +425,23 @@ static bool isKnownCommand(char command) {
 			|| command == TS_GET_FIRMWARE_VERSION
 			|| command == TS_PERF_TRACE_BEGIN
 			|| command == TS_PERF_TRACE_GET_BUFFER
-			|| command == TS_SD_R_COMMAND
-			|| command == TS_SD_W_COMMAND
 			|| command == TS_GET_CONFIG_ERROR;
 }
 
 TunerStudio tsInstance;
 
-static void tsProcessOne(TsChannelBase* tsChannel) {
+static int tsProcessOne(TsChannelBase* tsChannel) {
 	validateStack("communication", STACK_USAGE_COMMUNICATION, 128);
 
 	if (!tsChannel->isReady()) {
 		chThdSleepMilliseconds(10);
-		tsChannel->wasReady = false;
-		return;
-	}
-
-	if (!tsChannel->wasReady) {
-		tsChannel->wasReady = true;
-//			scheduleSimpleMsg(&logger, "ts channel is now ready ", hTimeNow());
+		return -1;
 	}
 
 	tsState.totalCounter++;
 
 	uint8_t firstByte;
-	int received = tsChannel->read(&firstByte, 1);
+	int received = tsChannel->readTimeout(&firstByte, 1, TS_COMMUNICATION_TIMEOUT);
 #if EFI_SIMULATOR
 		logMsg("received %d\r\n", received);
 #endif
@@ -465,18 +452,18 @@ static void tsProcessOne(TsChannelBase* tsChannel) {
 		// assume there's connection loss and notify the bluetooth init code
 		bluetoothSoftwareDisconnectNotify();
 #endif  /* EFI_BLUETOOTH_SETUP */
-		return;
+		return -1;
 	}
-	onDataArrived();
 
-	if (handlePlainCommand(tsChannel, firstByte))
-		return;
+	if (handlePlainCommand(tsChannel, firstByte)) {
+		return -1;
+	}
 
 	uint8_t secondByte;
-	received = tsChannel->read(&secondByte, 1);
+	received = tsChannel->readTimeout(&secondByte, 1, TS_COMMUNICATION_TIMEOUT);
 	if (received != 1) {
 		tunerStudioError("TS: ERROR: no second byte");
-		return;
+		return -1;
 	}
 
 	uint16_t incomingPacketSize = firstByte << 8 | secondByte;
@@ -485,36 +472,35 @@ static void tsProcessOne(TsChannelBase* tsChannel) {
 		efiPrintf("TunerStudio: invalid size: %d", incomingPacketSize);
 		tunerStudioError("ERROR: CRC header size");
 		sendErrorCode(tsChannel, TS_RESPONSE_UNDERRUN);
-		return;
+		return -1;
 	}
 
-	received = tsChannel->read((uint8_t* )tsChannel->scratchBuffer, 1);
+	received = tsChannel->readTimeout((uint8_t* )tsChannel->scratchBuffer, 1, TS_COMMUNICATION_TIMEOUT);
 	if (received != 1) {
 		tunerStudioError("ERROR: did not receive command");
 		sendErrorCode(tsChannel, TS_RESPONSE_UNDERRUN);
-		return;
+		return -1;
 	}
 
 	char command = tsChannel->scratchBuffer[0];
 	if (!isKnownCommand(command)) {
 		efiPrintf("unexpected command %x", command);
 		sendErrorCode(tsChannel, TS_RESPONSE_UNRECOGNIZED_COMMAND);
-		return;
+		return -1;
 	}
 
 #if EFI_SIMULATOR
 		logMsg("command %c\r\n", command);
 #endif
 
-	received = tsChannel->read((uint8_t*)(tsChannel->scratchBuffer + 1),
-			incomingPacketSize + CRC_VALUE_SIZE - 1);
 	int expectedSize = incomingPacketSize + CRC_VALUE_SIZE - 1;
+	received = tsChannel->readTimeout((uint8_t*)(tsChannel->scratchBuffer + 1), expectedSize, TS_COMMUNICATION_TIMEOUT);
 	if (received != expectedSize) {
 		efiPrintf("Got only %d bytes while expecting %d for command %c", received,
 				expectedSize, command);
 		tunerStudioError("ERROR: not enough bytes in stream");
 		sendErrorCode(tsChannel, TS_RESPONSE_UNDERRUN);
-		return;
+		return -1;
 	}
 
 	uint32_t expectedCrc = *(uint32_t*) (tsChannel->scratchBuffer + incomingPacketSize);
@@ -531,14 +517,17 @@ static void tsProcessOne(TsChannelBase* tsChannel) {
 				actualCrc, expectedCrc);
 		tunerStudioError("ERROR: CRC issue");
 		sendErrorCode(tsChannel, TS_RESPONSE_CRC_FAILURE);
-		return;
+		return -1;
 	}
 
 	int success = tsInstance.handleCrcCommand(tsChannel, tsChannel->scratchBuffer, incomingPacketSize);
 
 	if (!success) {
 		efiPrintf("got unexpected TunerStudio command %x:%c", command, command);
+		return -1;
 	}
+
+	return 0;
 }
 
 void TunerstudioThread::ThreadTask() {
@@ -551,7 +540,10 @@ void TunerstudioThread::ThreadTask() {
 
 	// Until the end of time, process incoming messages.
 	while(true) {
-		tsProcessOne(channel);
+		if (tsProcessOne(channel) == 0)
+			onDataArrived(true);
+		else
+			onDataArrived(false);
 	}
 }
 
@@ -592,7 +584,7 @@ void handleQueryCommand(TsChannelBase* tsChannel, ts_response_format_e mode) {
  */
 static void handleTestCommand(TsChannelBase* tsChannel) {
 	tsState.testCommandCounter++;
-	static char testOutputBuffer[24];
+	static char testOutputBuffer[64];
 	/**
 	 * this is NOT a standard TunerStudio command, this is my own
 	 * extension of the protocol to simplify troubleshooting
@@ -608,6 +600,12 @@ static void handleTestCommand(TsChannelBase* tsChannel) {
 
 	chsnprintf(testOutputBuffer, sizeof(testOutputBuffer), " %s\r\n", PROTOCOL_TEST_RESPONSE_TAG);
 	tsChannel->write((const uint8_t*)testOutputBuffer, strlen(testOutputBuffer));
+
+	if (hasFirmwareError()) {
+		const char* error = getFirmwareError();
+		chsnprintf(testOutputBuffer, sizeof(testOutputBuffer), "error=%s\r\n", error);
+		tsChannel->write((const uint8_t*)testOutputBuffer, strlen(testOutputBuffer));
+	}
 }
 
 extern CommandHandler console_line_callback;
@@ -707,15 +705,6 @@ int TunerStudioBase::handleCrcCommand(TsChannelBase* tsChannel, char *data, int 
 	case TS_GET_FIRMWARE_VERSION:
 		handleGetVersion(tsChannel);
 		break;
-#if (EFI_FILE_LOGGING && !HAL_USE_USB_MSD) || EFI_SIMULATOR
-	// This is only enabled on ECUs without USB mass storage
-	case TS_SD_R_COMMAND:
-		handleTsR(tsChannel, data);
-		break;
-	case TS_SD_W_COMMAND:
-		handleTsW(tsChannel, data);
-		break;
-#endif // (EFI_FILE_LOGGING && !HAL_USE_USB_MSD)
 #if EFI_TEXT_LOGGING
 	case TS_GET_TEXT:
 		handleGetText(tsChannel);

@@ -29,9 +29,11 @@ void initFlexSensor(DECLARE_CONFIG_PARAMETER_SIGNATURE);
 void initFuelLevel(DECLARE_CONFIG_PARAMETER_SIGNATURE);
 void initBaro(DECLARE_CONFIG_PARAMETER_SIGNATURE);
 void initAuxSensors(DECLARE_CONFIG_PARAMETER_SIGNATURE);
+void initVehicleSpeedSensor(DECLARE_ENGINE_PARAMETER_SIGNATURE);
 
 // Sensor reconfiguration
 void reconfigureVbatt(DECLARE_CONFIG_PARAMETER_SIGNATURE);
 void reconfigureTps(DECLARE_CONFIG_PARAMETER_SIGNATURE);
 void reconfigureThermistors(DECLARE_CONFIG_PARAMETER_SIGNATURE);
 void reconfigureOilPressure(DECLARE_CONFIG_PARAMETER_SIGNATURE);
+void deInitFlexSensor();

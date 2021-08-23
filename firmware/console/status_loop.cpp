@@ -24,21 +24,16 @@
  *
  */
 
-#include "global.h"
+#include "pch.h"
 #include "status_loop.h"
 #include "hip9011_logic.h"
-#include "engine_controller.h"
 
-#include "adc_inputs.h"
 #if EFI_LOGIC_ANALYZER
 #include "logic_analyzer.h"
 #endif /* EFI_LOGIC_ANALYZER */
 
 #include "trigger_central.h"
-#include "allsensors.h"
 #include "sensor_reader.h"
-#include "io_pins.h"
-#include "efi_gpio.h"
 #include "mmc_card.h"
 #include "console_io.h"
 #include "malfunction_central.h"
@@ -48,15 +43,11 @@
 #include "tunerstudio.h"
 #include "fuel_math.h"
 #include "main_trigger_callback.h"
-#include "engine_math.h"
 #include "spark_logic.h"
 #include "idle_thread.h"
-#include "engine_configuration.h"
 #include "os_util.h"
 #include "svnversion.h"
-#include "engine.h"
 #include "lcd_controller.h"
-#include "settings.h"
 #include "can_hw.h"
 #include "periodic_thread_controller.h"
 #include "cdm_ion_sense.h"
@@ -141,8 +132,6 @@ static uint64_t binaryLogCount = 0;
 
 #endif /* EFI_FILE_LOGGING */
 
-EXTERN_ENGINE;
-
 /**
  * This is useful if we are changing engine mode dynamically
  * For example http://rusefi.com/forum/viewtopic.php?f=5&t=1085
@@ -226,10 +215,10 @@ void printOverallStatus(efitimesec_t nowSeconds) {
 	printOutPin(PROTOCOL_WA_CHANNEL_2, CONFIG(logicAnalyzerPins)[1]);
 #endif /* EFI_LOGIC_ANALYZER */
 
-	int cylCount = minI(minI(CONFIG(specs.cylindersCount), INJECTION_PIN_COUNT), IGNITION_PIN_COUNT);
+	int cylCount = minI(CONFIG(specs.cylindersCount), MAX_CYLINDER_COUNT);
 	for (int i = 0; i < cylCount; i++) {
 		printOutPin(enginePins.coils[i].getShortName(), CONFIG(ignitionPins)[i]);
-
+		printOutPin(enginePins.trailingCoils[i].getShortName(), CONFIG(trailingCoilPins)[i]);
 		printOutPin(enginePins.injectors[i].getShortName(), CONFIG(injectionPins)[i]);
 	}
 	for (int i = 0; i < AUX_DIGITAL_VALVE_COUNT;i++) {
@@ -332,11 +321,11 @@ static OutputPin *leds[] = { &enginePins.warningLedPin, &enginePins.runningLedPi
 		&enginePins.errorLedPin, &enginePins.communicationLedPin, &enginePins.checkEnginePin };
 
 static void initStatusLeds(void) {
-	enginePins.communicationLedPin.initPin("led: comm status", engineConfiguration->communicationLedPin, &LED_COMMUNICATION_BRAIN_PIN_MODE);
+	enginePins.communicationLedPin.initPin("led: comm status", engineConfiguration->communicationLedPin, &LED_COMMUNICATION_BRAIN_PIN_MODE, true);
 	// checkEnginePin is already initialized by the time we get here
 
-	enginePins.warningLedPin.initPin("led: warning status", engineConfiguration->warningLedPin, &LED_WARNING_BRAIN_PIN_MODE);
-	enginePins.runningLedPin.initPin("led: running status", engineConfiguration->runningLedPin, &LED_RUNING_BRAIN_PIN_MODE);
+	enginePins.warningLedPin.initPin("led: warning status", engineConfiguration->warningLedPin, &LED_WARNING_BRAIN_PIN_MODE, true);
+	enginePins.runningLedPin.initPin("led: running status", engineConfiguration->runningLedPin, &LED_RUNING_BRAIN_PIN_MODE, true);
 }
 
 #if EFI_PROD_CODE
@@ -404,7 +393,6 @@ extern int totalLoggedBytes;
 				offTimeMs = 50;
 				onTimeMs = 450;
 			} else if (consoleByteArrived) {
-				consoleByteArrived = false;
 				offTimeMs = 100;
 				onTimeMs = 33;
 #if EFI_INTERNAL_FLASH
@@ -482,10 +470,6 @@ void updateTunerStudioState(TunerStudioOutputChannels *tsOutputChannels DECLARE_
 #if EFI_PROD_CODE
 	executorStatistics();
 #endif /* EFI_PROD_CODE */
-
-#if EFI_SIMULATOR
-	tsOutputChannels->sd_status = 1 + 4;
-#endif
 
 	// header
 	tsOutputChannels->tsConfigVersion = TS_FILE_VERSION;
@@ -601,10 +585,10 @@ void updateTunerStudioState(TunerStudioOutputChannels *tsOutputChannels DECLARE_
 
 #if EFI_SHAFT_POSITION_INPUT
 	// 248
-	tsOutputChannels->vvtPosition = engine->triggerCentral.getVVTPosition(/*bankIndex*/0, /*camIndex*/0);
-	tsOutputChannels->secondVvtPositionBank1 = engine->triggerCentral.getVVTPosition(/*bankIndex*/0, /*camIndex*/1);
-	tsOutputChannels->vvtPositionBank2 = engine->triggerCentral.getVVTPosition(/*bankIndex*/1, /*camIndex*/0);
-	tsOutputChannels->secondVvtPositionBank2 = engine->triggerCentral.getVVTPosition(/*bankIndex*/1, /*camIndex*/1);
+	tsOutputChannels->vvtPositionB1I = engine->triggerCentral.getVVTPosition(/*bankIndex*/0, /*camIndex*/0);
+	tsOutputChannels->vvtPositionB1E = engine->triggerCentral.getVVTPosition(/*bankIndex*/0, /*camIndex*/1);
+	tsOutputChannels->vvtPositionB2I = engine->triggerCentral.getVVTPosition(/*bankIndex*/1, /*camIndex*/0);
+	tsOutputChannels->vvtPositionB2E = engine->triggerCentral.getVVTPosition(/*bankIndex*/1, /*camIndex*/1);
 #endif
 
 	// 252
@@ -696,19 +680,16 @@ void updateTunerStudioState(TunerStudioOutputChannels *tsOutputChannels DECLARE_
 	tsOutputChannels->needBurn = getNeedToWriteConfiguration();
 #endif /* EFI_INTERNAL_FLASH */
 
-#if EFI_FILE_LOGGING
-	tsOutputChannels->hasSdCard = isSdCardAlive();
-#endif /* EFI_FILE_LOGGING */
-
 	tsOutputChannels->isFuelPumpOn = enginePins.fuelPumpRelay.getLogicValue();
 	tsOutputChannels->isFanOn = enginePins.fanRelay.getLogicValue();
+	tsOutputChannels->isFan2On = enginePins.fanRelay2.getLogicValue();
 	tsOutputChannels->isO2HeaterOn = enginePins.o2heater.getLogicValue();
 	tsOutputChannels->isIgnitionEnabledIndicator = ENGINE(limpManager).allowIgnition();
 	tsOutputChannels->isInjectionEnabledIndicator = ENGINE(limpManager).allowInjection();
 	tsOutputChannels->isCylinderCleanupActivated = engine->isCylinderCleanupMode;
 
 #if EFI_VEHICLE_SPEED
-	float vehicleSpeed = getVehicleSpeed();
+	float vehicleSpeed = Sensor::get(SensorType::VehicleSpeed).value_or(0);
 	tsOutputChannels->vehicleSpeedKph = vehicleSpeed;
 	tsOutputChannels->speedToRpmRatio = vehicleSpeed / rpm;
 
@@ -730,7 +711,6 @@ void updateTunerStudioState(TunerStudioOutputChannels *tsOutputChannels DECLARE_
 	tsOutputChannels->clutchUpState = engine->clutchUpState;
 	tsOutputChannels->clutchDownState = engine->clutchDownState;
 	tsOutputChannels->brakePedalState = engine->brakePedalState;
-	tsOutputChannels->acSwitchState = engine->acSwitchState;
 
 #if EFI_ENGINE_CONTROL
 	// tCharge depends on the previous state, so we should use the stored value.
@@ -819,10 +799,6 @@ void updateTunerStudioState(TunerStudioOutputChannels *tsOutputChannels DECLARE_
 		tsOutputChannels->debugFloatField6 = getFsioOutputValue(12 PASS_ENGINE_PARAMETER_SUFFIX);
 		tsOutputChannels->debugFloatField7 = getFsioOutputValue(13 PASS_ENGINE_PARAMETER_SUFFIX);
 		break;
-	case DBG_FSIO_SPECIAL:
-		tsOutputChannels->debugFloatField1 = ENGINE(fsioState.fsioIdleOffset);
-		tsOutputChannels->debugFloatField2 = ENGINE(fsioState.fsioIdleMinValue);
-		break;
 #endif /* EFI_FSIO */
 	case DBG_VEHICLE_SPEED_SENSOR:
 		tsOutputChannels->debugIntField1 = engine->engineState.vssEventCounter;
@@ -879,6 +855,9 @@ void updateTunerStudioState(TunerStudioOutputChannels *tsOutputChannels DECLARE_
 			float instantRpm = engine->triggerCentral.triggerState.getInstantRpm();
 			tsOutputChannels->debugFloatField1 = instantRpm;
 			tsOutputChannels->debugFloatField2 = instantRpm / GET_RPM();
+
+			tsOutputChannels->debugIntField1 = engine->mostRecentTimeBetweenSparkEvents;
+			tsOutputChannels->debugIntField2 = engine->mostRecentTimeBetweenIgnitionEvents;
 		}
 		break;
 	case DBG_ION:

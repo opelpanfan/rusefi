@@ -49,7 +49,6 @@
  * probably want EFI_ENABLE_ASSERTS to be FALSE. Also you would probably want to FALSE
  * CH_DBG_ENABLE_CHECKS
  * CH_DBG_ENABLE_ASSERTS
- * CH_DBG_ENABLE_TRACE
  * in chconf.h
  *
  */
@@ -402,6 +401,14 @@
 
 #ifndef CONFIG_RESET_SWITCH_PIN
 #define CONFIG_RESET_SWITCH_PIN 6
+#endif
+
+#ifndef EFI_STORAGE_INT_FLASH
+#define EFI_STORAGE_INT_FLASH   TRUE
+#endif
+
+#ifndef EFI_STORAGE_EXT_SNOR
+#define EFI_STORAGE_EXT_SNOR    FALSE
 #endif
 
 #define EFI_JOYSTICK TRUE

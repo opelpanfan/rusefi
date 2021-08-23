@@ -7,15 +7,8 @@
  * @author andreika <prometheus.pcb@gmail.com>
  */
 
-#include "global.h"
-#include "engine.h"
-#include "engine_configuration.h"
-#include "adc_inputs.h"
-#include "engine_math.h"
-#include "tps.h"
+#include "pch.h"
 #include "trigger_input.h"
-
-EXTERN_ENGINE;
 
 void setBoardDefaultConfiguration(void) {
 	setOperationMode(engineConfiguration, FOUR_STROKE_CRANK_SENSOR);
@@ -119,9 +112,9 @@ void setBoardDefaultConfiguration(void) {
 
 	// todo:
 	int i;
-	for (i = 0; i < INJECTION_PIN_COUNT; i++)
+	for (i = 0; i < MAX_CYLINDER_COUNT; i++)
 		engineConfiguration->injectionPins[i] = GPIO_UNASSIGNED;
-	for (i = 0; i < IGNITION_PIN_COUNT; i++)
+	for (i = 0; i < MAX_CYLINDER_COUNT; i++)
 		engineConfiguration->ignitionPins[i] = GPIO_UNASSIGNED;
 	
 	engineConfiguration->adcVcc = 5.0f;

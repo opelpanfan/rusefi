@@ -7,8 +7,6 @@
 
 #pragma once
 
-#include "global.h"
-#include "engine_configuration_generated_structures.h"
 #include "cyclic_buffer.h"
 #include "timer.h"
 
@@ -57,6 +55,8 @@ public:
 	gear_e gearSelectorPosition;
 };
 
+typedef cyclic_buffer<int, 8> warningBuffer_t;
+
 class WarningCodeState {
 public:
 	WarningCodeState();
@@ -67,19 +67,13 @@ public:
 	int lastErrorCode;
 	efitimesec_t timeOfPreviousWarning;
 	// todo: we need a way to post multiple recent warnings into TS
-	cyclic_buffer<int, 8> recentWarnings;
+	warningBuffer_t recentWarnings;
 };
 
 class FsioState {
 public:
 	FsioState();
-	float fsioTimingAdjustment = 0;
-	float fsioIdleTargetRPMAdjustment = 0;
-	float servoValues[SERVO_COUNT];
 	float fsioLastValue[FSIO_COMMAND_COUNT];
-
-	float fsioIdleOffset = 0;
-	float fsioIdleMinValue = 0;
 
 	float fsioRpmHardLimit;
 

@@ -1,27 +1,25 @@
+#include "pch.h"
 
-#include "global.h"
-#include "engine.h"
 #include "biquad.h"
-#include "perf_trace.h"
 #include "thread_controller.h"
 #include "knock_logic.h"
 #include "software_knock.h"
-#include "thread_priority.h"
+#include "peak_detect.h"
 
 #if EFI_SOFTWARE_KNOCK
-
-EXTERN_ENGINE;
 
 #include "knock_config.h"
 #include "ch.hpp"
 
-NO_CACHE adcsample_t sampleBuffer[2000];
-int8_t currentCylinderIndex = 0;
-Biquad knockFilter;
+static NO_CACHE adcsample_t sampleBuffer[2000];
+static int8_t currentCylinderIndex = 0;
+static efitick_t lastKnockSampleTime = 0;
+static Biquad knockFilter;
 
 static volatile bool knockIsSampling = false;
 static volatile bool knockNeedsProcess = false;
 static volatile size_t sampleCount = 0;
+static int cylinderIndexCopy;
 
 chibios_rt::BinarySemaphore knockSem(/* taken =*/ true);
 
@@ -108,7 +106,7 @@ const ADCConversionGroup* getConversionGroup(uint8_t cylinderIndex) {
 	return &adcConvGroupCh1;
 }
 
-void startKnockSampling(uint8_t cylinderIndex) {
+static void startKnockSampling(uint8_t cylinderIndex) {
 	if (!CONFIG(enableSoftwareKnock)) {
 		return;
 	}
@@ -129,8 +127,8 @@ void startKnockSampling(uint8_t cylinderIndex) {
 		return;
 	}
 
-	// Sample for 45 degrees
-	float samplingSeconds = ENGINE(rpmCalculator).oneDegreeUs * 45 * 1e-6;
+	// Sample for XX degrees
+	float samplingSeconds = ENGINE(rpmCalculator).oneDegreeUs * CONFIG(knockSamplingDuration) / US_PER_SECOND_F;
 	constexpr int sampleRate = KNOCK_SAMPLE_RATE;
 	sampleCount = 0xFFFFFFFE & static_cast<size_t>(clampF(100, samplingSeconds * sampleRate, efi::size(sampleBuffer)));
 
@@ -141,6 +139,21 @@ void startKnockSampling(uint8_t cylinderIndex) {
 	currentCylinderIndex = cylinderIndex;
 
 	adcStartConversionI(&KNOCK_ADC, conversionGroup, sampleBuffer, sampleCount);
+	lastKnockSampleTime = getTimeNowNt();
+}
+
+static void startKnockSamplingNoParam(void *arg) {
+	// ugly as hell but that's error: cast between incompatible function types from 'void (*)(uint8_t)' {aka 'void (*)(unsigned char)'} to 'schfunc_t' {aka 'void (*)(void*)'} [-Werror=cast-function-type]
+	startKnockSampling(cylinderIndexCopy);
+}
+
+static scheduling_s startSampling;
+
+void knockSamplingCallback(uint8_t cylinderIndex, efitick_t nowNt) {
+	cylinderIndexCopy = cylinderIndex;
+
+	scheduleByAngle(&startSampling, nowNt,
+			/*angle*/CONFIG(knockDetectionWindowStart), startKnockSamplingNoParam PASS_ENGINE_PARAMETER_SUFFIX);
 }
 
 class KnockThread : public ThreadController<256> {
@@ -164,6 +177,10 @@ void initSoftwareKnock() {
 	}
 }
 
+using PD = PeakDetect<float, MS2NT(100)>;
+static PD peakDetectors[12];
+static PD allCylinderPeakDetector;
+
 void processLastKnockEvent() {
 	if (!knockNeedsProcess) {
 		return;
@@ -186,9 +203,19 @@ void processLastKnockEvent() {
 		float volts = ratio * sampleBuffer[i];
 
 		float filtered = knockFilter.filter(volts);
+		if (i == localCount - 1 && engineConfiguration->debugMode == DBG_KNOCK) {
+			tsOutputChannels.debugFloatField1 = volts;
+			tsOutputChannels.debugFloatField2 = filtered;
+		}
 
 		sumSq += filtered * filtered;
 	}
+
+	// take a local copy
+	auto lastKnockTime = lastKnockSampleTime;
+
+	// We're done with inspecting the buffer, another sample can be taken
+	knockNeedsProcess = false;
 
 	// mean of squares (not yet root)
 	float meanSquares = sumSq / localCount;
@@ -196,10 +223,15 @@ void processLastKnockEvent() {
 	// RMS
 	float db = 10 * log10(meanSquares);
 
-	tsOutputChannels.knockLevels[currentCylinderIndex] = roundf(clampF(-100, db, 100));
-	tsOutputChannels.knockLevel = db;
+	// clamp to reasonable range
+	db = clampF(-100, db, 100);
 
-	knockNeedsProcess = false;
+	// Pass through peak detector
+	float cylPeak = peakDetectors[currentCylinderIndex].detect(db, lastKnockTime);
+
+	tsOutputChannels.knockLevels[currentCylinderIndex] = roundf(cylPeak);
+	tsOutputChannels.knockLevel = allCylinderPeakDetector.detect(db, lastKnockTime);
+
 }
 
 void KnockThread::ThreadTask() {

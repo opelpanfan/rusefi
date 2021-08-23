@@ -10,8 +10,7 @@
  * @author Dmitry Sidin, (c) 2015
  */
 
-#include "global.h"
-
+#include "pch.h"
 
 #include "interpolation.h"
 
@@ -163,18 +162,6 @@ int findIndex2(const float array[], unsigned size, float value) {
 			i = j;
 	}
 	return i || *array <= value ? i : -1;
-}
-
-/**
- * in order to use binary search we need to know that axis elements are sorted
- */
-void ensureArrayIsAscending(const char *msg, const float array[], int size) {
-	for (int i = 0; i < size - 1; i ++) {
-		if (array[i] >= array[i+ 1]) {
-			// todo: this should become a warning under https://github.com/rusefi/rusefi/issues/440
-			firmwareError(CUSTOM_ERR_AXIS_ORDER, "invalid axis %s at %.2f", msg, array[i]);
-		}
-	}
 }
 
 int findIndex(const float array[], int size, float value) {

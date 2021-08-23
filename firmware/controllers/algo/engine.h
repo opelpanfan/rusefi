@@ -19,6 +19,7 @@
 #include "buttonshift.h"
 #include "gear_controller.h"
 #include "limp_manager.h"
+#include "pin_repository.h"
 
 #if EFI_SIGNAL_EXECUTOR_ONE_TIMER
 // PROD real firmware uses this implementation
@@ -69,15 +70,18 @@ protected:
 
 class VvtTriggerConfiguration final : public TriggerConfiguration {
 public:
-	VvtTriggerConfiguration() : TriggerConfiguration("TRG ") {}
-	// todo: is it possible to make 'index' constructor argument?
-	int index = 0;
+	const int index;
+
+	VvtTriggerConfiguration(const char * prefix, const int index) : TriggerConfiguration(prefix), index(index) {
+	}
 
 protected:
 	bool isUseOnlyRisingEdgeForTrigger() const override;
 	bool isVerboseTriggerSynchDetails() const override;
 	trigger_type_e getType() const override;
 };
+
+#define DEFAULT_MOCK_SPEED -1
 
 class Engine final : public TriggerStateListener {
 public:
@@ -86,6 +90,12 @@ public:
 	Engine();
 	bool isPwmEnabled = true;
 	int triggerActivitySecond = 0;
+
+	const char *prevOutputName = nullptr;
+
+	PinRepository pinRepository;
+
+	InjectionEvent primeInjEvent;
 
 	IEtbController *etbControllers[ETB_COUNT] = {nullptr};
 	IFuelComputer *fuelComputer = nullptr;
@@ -96,8 +106,24 @@ public:
 
 	GearControllerBase *gearController;
 
+
+	float mockVehicleSpeed = DEFAULT_MOCK_SPEED; // in kilometers per hour
+
+	efitick_t vssLastSignalTimeNt = 0;
+	efitick_t vssDiff = 0;
+
+	efitick_t mostRecentSparkEvent;
+	efitick_t mostRecentTimeBetweenSparkEvents;
+	efitick_t mostRecentIgnitionEvent;
+	efitick_t mostRecentTimeBetweenIgnitionEvents;
+
 	PrimaryTriggerConfiguration primaryTriggerConfiguration;
-	VvtTriggerConfiguration vvtTriggerConfiguration[CAMS_PER_BANK];
+#if CAMS_PER_BANK == 1
+	VvtTriggerConfiguration vvtTriggerConfiguration[CAMS_PER_BANK] = {{"VVT1 ", 0}};
+#else
+	VvtTriggerConfiguration vvtTriggerConfiguration[CAMS_PER_BANK] = {{"VVT1 ", 0}, {"VVT2 ", 1}};
+#endif
+
 	efitick_t startStopStateLastPushTime = 0;
 
 #if EFI_SHAFT_POSITION_INPUT
@@ -167,6 +193,8 @@ public:
 #if EFI_ENGINE_CONTROL
 	FuelSchedule injectionEvents;
 	IgnitionEventList ignitionEvents;
+	scheduling_s tdcScheduler[2];
+
 #endif /* EFI_ENGINE_CONTROL */
 
 	bool needToStopEngine(efitick_t nowNt) const;
@@ -181,6 +209,9 @@ public:
 	 * this is based on isEngineChartEnabled and engineSnifferRpmThreshold settings
 	 */
 	bool isEngineChartEnabled = false;
+
+	bool tdcMarkEnabled = true; // used by unit tests only
+
 	/**
 	 * this is based on sensorChartMode and sensorSnifferRpmThreshold settings
 	 */
@@ -303,13 +334,13 @@ public:
 	 * pre-calculated offset for given sequence index within engine cycle
 	 * (not cylinder ID)
 	 */
-	angle_t ignitionPositionWithinEngineCycle[IGNITION_PIN_COUNT];
+	angle_t ignitionPositionWithinEngineCycle[MAX_CYLINDER_COUNT];
 	/**
 	 * pre-calculated reference to which output pin should be used for
 	 * given sequence index within engine cycle
 	 * todo: update documentation
 	 */
-	int ignitionPin[IGNITION_PIN_COUNT];
+	int ignitionPin[MAX_CYLINDER_COUNT];
 
 	/**
 	 * this is invoked each time we register a trigger tooth signal
@@ -392,4 +423,8 @@ void doScheduleStopEngine(DECLARE_ENGINE_PARAMETER_SIGNATURE);
 
 #define HW_CHECK_RPM 200
 
-
+// These externs aren't needed for unit tests - everything is injected instead
+#if !EFI_UNIT_TEST
+extern Engine ___engine;
+extern Engine *engine;
+#endif // EFI_UNIT_TEST

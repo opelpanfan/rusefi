@@ -21,23 +21,15 @@
  * If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "global.h"
+#include "pch.h"
 
 #if EFI_CAN_SUPPORT
 #include "os_access.h"
-#include "engine.h"
 #include "obd2.h"
 #include "can.h"
 #include "can_msg_tx.h"
 #include "vehicle_speed.h"
-#include "map.h"
-#include "maf.h"
-#include "sensor.h"
-#include "engine_math.h"
 #include "fuel_math.h"
-#include "thermistors.h"
-
-EXTERN_ENGINE;
 
 static const int16_t supportedPids0120[] = { 
 	PID_MONITOR_STATUS,
@@ -144,7 +136,7 @@ static void handleGetDataRequest(const CANRxFrame& rx) {
 		obdSendValue(_1_MODE, pid, 2, GET_RPM() * ODB_RPM_MULT);	//	rotation/min.	(A*256+B)/4
 		break;
 	case PID_SPEED:
-		obdSendValue(_1_MODE, pid, 1, getVehicleSpeed());
+		obdSendValue(_1_MODE, pid, 1, Sensor::get(SensorType::VehicleSpeed).value_or(0));
 		break;
 	case PID_TIMING_ADVANCE: {
 		float timing = engine->engineState.timingAdvance;

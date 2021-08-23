@@ -20,16 +20,12 @@
  *
  */
 
-#include "global.h"
+#include "pch.h"
+
 #include "os_access.h"
-#include "engine_configuration.h"
 #include "fsio_impl.h"
-#include "allsensors.h"
-#include "interpolation.h"
-#include "engine_math.h"
 #include "speed_density.h"
 #include "advance_map.h"
-#include "sensor.h"
 #include "flash_main.h"
 
 #include "hip9011_logic.h"
@@ -50,6 +46,7 @@
 #include "ford_1995_inline_6.h"
 
 #include "nissan_primera.h"
+#include "nissan_vq.h"
 #include "honda_accord.h"
 #include "GY6_139QMB.h"
 
@@ -91,9 +88,10 @@
 #include "hip9011.h"
 #endif
 
+#include "hardware.h"
+
 #if EFI_PROD_CODE
 #include "init.h"
-#include "hardware.h"
 #include "board.h"
 #endif /* EFI_PROD_CODE */
 
@@ -104,8 +102,6 @@
 #if EFI_TUNER_STUDIO
 #include "tunerstudio.h"
 #endif
-
-EXTERN_ENGINE;
 
 //#define TS_DEFAULT_SPEED 115200
 #define TS_DEFAULT_SPEED 38400
@@ -172,11 +168,13 @@ void incrementGlobalConfigurationVersion(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 #if EFI_DEFAILED_LOGGING
 	efiPrintf("set globalConfigurationVersion=%d", globalConfigurationVersion);
 #endif /* EFI_DEFAILED_LOGGING */
+
+	applyNewHardwareSettings(PASS_ENGINE_PARAMETER_SIGNATURE);
+
 /**
  * All these callbacks could be implemented as listeners, but these days I am saving RAM
  */
 #if EFI_PROD_CODE
-//todo 	#2839	applyNewHardwareSettings();
 	reconfigureSensors();
 #endif /* EFI_PROD_CODE */
 	engine->preCalculate(PASS_ENGINE_PARAMETER_SIGNATURE);
@@ -198,7 +196,7 @@ void incrementGlobalConfigurationVersion(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 #if EFI_SHAFT_POSITION_INPUT
 	onConfigurationChangeTriggerCallback(PASS_ENGINE_PARAMETER_SIGNATURE);
 #endif /* EFI_SHAFT_POSITION_INPUT */
-#if EFI_EMULATE_POSITION_SENSORS
+#if EFI_EMULATE_POSITION_SENSORS && ! EFI_UNIT_TEST
 	onConfigurationChangeRpmEmulatorCallback(&activeConfiguration);
 #endif /* EFI_EMULATE_POSITION_SENSORS */
 
@@ -368,7 +366,7 @@ static void setCanFrankensoDefaults(DECLARE_CONFIG_PARAMETER_SIGNATURE) {
  * see also setDefaultIdleSpeedTarget()
  */
 void setTargetRpmCurve(int rpm DECLARE_CONFIG_PARAMETER_SUFFIX) {
-	setLinearCurve(engineConfiguration->cltIdleRpmBins, CLT_CURVE_RANGE_FROM, 90, 10);
+	setLinearCurve(engineConfiguration->cltIdleRpmBins, CLT_CURVE_RANGE_FROM, 140, 10);
 	setLinearCurve(engineConfiguration->cltIdleRpm, rpm, rpm, 10);
 }
 
@@ -400,8 +398,10 @@ void setDefaultGppwmParameters(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 	}
 }
 
-void setDefaultEngineNoiseTable(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
+static void setDefaultEngineNoiseTable(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 	setRpmTableBin(engineConfiguration->knockNoiseRpmBins, ENGINE_NOISE_CURVE_SIZE);
+
+	engineConfiguration->knockSamplingDuration = 45;
 
 	engineConfiguration->knockNoise[0] = 2; // 800
 	engineConfiguration->knockNoise[1] = 2; // 1700
@@ -497,7 +497,6 @@ static void setDefaultEngineConfiguration(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 	engineConfiguration->canSleepPeriodMs = 50;
 	engineConfiguration->canReadEnabled = true;
 	engineConfiguration->canWriteEnabled = true;
-	engineConfiguration->canNbcType = CAN_BUS_MAZDA_RX8;
 
 	// Don't enable, but set default address
 	engineConfiguration->verboseCanBaseAddress = CAN_DEFAULT_BASE;
@@ -515,8 +514,9 @@ static void setDefaultEngineConfiguration(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 	engineConfiguration->idlePidRpmDeadZone = 50;
 	engineConfiguration->startOfCrankingPrimingPulse = 0;
 
-	engineConfiguration->acCutoffLowRpm = 700;
-	engineConfiguration->acCutoffHighRpm = 5000;
+	engineConfiguration->maxAcRpm = 5000;
+	engineConfiguration->maxAcClt = 100;
+	engineConfiguration->maxAcTps = 75;
 
 	initTemperatureCurve(IAT_FUEL_CORRECTION_CURVE, 1);
 
@@ -587,7 +587,11 @@ static void setDefaultEngineConfiguration(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 
 	engineConfiguration->idleRpmPid.minValue = 0;
 	engineConfiguration->idleRpmPid.maxValue = 99;
-	engineConfiguration->idlePidDeactivationTpsThreshold = 2;
+	/**
+	 * between variation between different sensor and weather and fabrication tolerance
+	 * five percent looks like a safer default
+	 */
+	engineConfiguration->idlePidDeactivationTpsThreshold = 5;
 
 	engineConfiguration->idle.solenoidFrequency = 200;
 	// set idle_position 50
@@ -858,6 +862,7 @@ void resetConfigurationExt(configuration_callback_t boardCallback, engine_type_e
 // todo: is it time to replace MICRO_RUS_EFI, PROTEUS, PROMETHEUS_DEFAULTS with MINIMAL_PINS? maybe rename MINIMAL_PINS to DEFAULT?
 	case PROTEUS_DEFAULTS:
 	case PROMETHEUS_DEFAULTS:
+	case HELLEN_128_MERCEDES:
 	case MINIMAL_PINS:
 		// all basic settings are already set in prepareVoidConfiguration(), no need to set anything here
 		// nothing to do - we do it all in setBoardDefaultConfiguration
@@ -939,16 +944,37 @@ void resetConfigurationExt(configuration_callback_t boardCallback, engine_type_e
 	case HELLEN_NB2:
 		setMiataNB2_Hellen72(PASS_CONFIG_PARAMETER_SIGNATURE);
 		break;
+	case HELLEN_NB2_36:
+		setMiataNB2_Hellen72_36(PASS_CONFIG_PARAMETER_SIGNATURE);
+		break;
 	case HELLEN72_ETB:
 		setHellen72etb(PASS_CONFIG_PARAMETER_SIGNATURE);
 		break;
-	case HELLEN_128_MERCEDES:
+	case HELLEN_121_NISSAN_4_CYL:
+		setHellen121nissanQR(PASS_CONFIG_PARAMETER_SIGNATURE);
+		break;
+	case HELLEN_121_NISSAN_6_CYL:
+		setHellen121nissanVQ(PASS_CONFIG_PARAMETER_SIGNATURE);
+		break;
+	case HELLEN_121_VAG_5_CYL:
+	    setHellen121Vag_5_cyl(PASS_CONFIG_PARAMETER_SIGNATURE);
+        break;
+	case HELLEN_121_VAG_V6_CYL:
+	    setHellen121Vag_v6_cyl(PASS_CONFIG_PARAMETER_SIGNATURE);
+        break;
+	case HELLEN_121_VAG_VR6_CYL:
+	    setHellen121Vag_vr6_cyl(PASS_CONFIG_PARAMETER_SIGNATURE);
+        break;
+	case HELLEN_121_VAG_8_CYL:
+	    setHellen121Vag_8_cyl(PASS_CONFIG_PARAMETER_SIGNATURE);
+        break;
 	case HELLEN_121_VAG:
-	case HELLEN_121_NISSAN:
 	case HELLEN_55_BMW:
 	case HELLEN_88_BMW:
 	case HELLEN_134_BMW:
 	case HELLEN_154_VAG:
+	case HELLEN_154_HYUNDAI:
+		break;
 	case HELLEN_NA6:
 	case HELLEN_NA94:
 		setHellenNA6(PASS_CONFIG_PARAMETER_SIGNATURE);
@@ -1087,6 +1113,9 @@ void resetConfigurationExt(configuration_callback_t boardCallback, engine_type_e
 	case TEST_33816:
 		setTest33816EngineConfiguration(PASS_CONFIG_PARAMETER_SIGNATURE);
 		break;
+	case TEST_ROTARY:
+		setRotary(PASS_CONFIG_PARAMETER_SIGNATURE);
+		break;
 #endif // HW_FRANKENSO
 #ifdef HW_SUBARU_EG33
 	case SUBARUEG33_DEFAULTS:
@@ -1152,17 +1181,6 @@ void prepareShapes(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 }
 
 #endif
-
-float getRpmMultiplier(operation_mode_e mode) {
-	if (mode == FOUR_STROKE_SYMMETRICAL_CRANK_SENSOR) {
-		return 2;
-	} else if (mode == FOUR_STROKE_CAM_SENSOR) {
-		return 0.5;
-	} else if (mode == FOUR_STROKE_CRANK_SENSOR) {
-		return 1;
-	}
-	return 1;
-}
 
 void setOperationMode(engine_configuration_s *engineConfiguration, operation_mode_e mode) {
 	engineConfiguration->ambiguousOperationMode = mode;

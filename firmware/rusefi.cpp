@@ -106,12 +106,10 @@
  *
  */
 
-#include "global.h"
+#include "pch.h"
 #include "os_access.h"
 #include "trigger_structure.h"
 #include "hardware.h"
-#include "engine_controller.h"
-#include "efi_gpio.h"
 
 #include "rfi_perftest.h"
 #include "rusefi.h"
@@ -119,15 +117,15 @@
 
 #include "eficonsole.h"
 #include "status_loop.h"
-#include "pin_repository.h"
 #include "custom_engine.h"
-#include "engine_math.h"
 #include "mpu_util.h"
 #include "tunerstudio.h"
 #include "mmc_card.h"
 #include "mass_storage_init.h"
 #include "trigger_emulator_algo.h"
 #include "rusefi_lua.h"
+
+#include <setjmp.h>
 
 #if EFI_ENGINE_EMULATOR
 #include "engine_emulator.h"
@@ -138,8 +136,6 @@ bool main_loop_started = false;
 static char panicMessage[200];
 
 static virtual_timer_t resetTimer;
-
-EXTERN_ENGINE;
 
 // todo: move this into a hw-specific file
 void rebootNow(void) {
@@ -156,15 +152,15 @@ static void scheduleReboot(void) {
 	chVTSetI(&resetTimer, TIME_MS2I(3000), (vtfunc_t) rebootNow, NULL);
 }
 
-// Returns false if there's an obvious problem with the loaded configuration
-static bool validateConfig() {
-	if (CONFIG(specs.cylindersCount) > minI(INJECTION_PIN_COUNT, IGNITION_PIN_COUNT)) {
-		firmwareError(OBD_PCM_Processor_Fault, "Invalid cylinder count: %d", CONFIG(specs.cylindersCount));
-		return false;
-	}
-
-	return true;
+static jmp_buf jmpEnv;
+void onAssertionFailure() {
+	// There's been an assertion failure: instead of hanging, jump back to where we check
+	// if (setjmp(jmpEnv)) (see below for more complete explanation)
+	longjmp(jmpEnv, 1);
 }
+
+void runRusEfiWithConfig();
+void runMainLoop();
 
 void runRusEfi(void) {
 	efiAssertVoid(CUSTOM_RM_STACK_1, getCurrentRemainingStack() > 512, "init s");
@@ -174,6 +170,11 @@ void runRusEfi(void) {
 #if EFI_TEXT_LOGGING
 	// Initialize logging system early - we can't log until this is called
 	startLoggingProcessor();
+#endif
+
+#ifdef STM32F7
+	void sys_dual_bank(void);
+	addConsoleAction("dual_bank", sys_dual_bank);
 #endif
 
 	addConsoleAction(CMD_REBOOT, scheduleReboot);
@@ -186,9 +187,6 @@ void runRusEfi(void) {
 
 	// Perform hardware initialization that doesn't need configuration
 	initHardwareNoConfig();
-
-	// Read configuration from flash memory
-	loadConfiguration(PASS_ENGINE_PARAMETER_SIGNATURE);
 
 #if EFI_USB_SERIAL
 	startUsbConsole();
@@ -203,12 +201,35 @@ void runRusEfi(void) {
 	 */
 	initializeConsole();
 
+	// Read configuration from flash memory
+	loadConfiguration(PASS_ENGINE_PARAMETER_SIGNATURE);
+
 #if EFI_TUNER_STUDIO
 	startTunerStudioConnectivity();
 #endif /* EFI_TUNER_STUDIO */
 
 	// Start hardware serial ports (including bluetooth, if present)
 	startSerialChannels();
+
+	runRusEfiWithConfig();
+
+	// periodic events need to be initialized after fuel&spark pins to avoid a warning
+	initPeriodicEvents(PASS_ENGINE_PARAMETER_SIGNATURE);
+
+	runMainLoop();
+}
+
+void runRusEfiWithConfig() {
+	// If some config operation caused an OS assertion failure, return immediately
+	// This sets the "unwind point" that we can jump back to later with longjmp if we have
+	// an assertion failure. If that happens, setjmp() will return non-zero, so we will
+	// return immediately from this function instead of trying to init hardware again (which failed last time)
+	if (setjmp(jmpEnv)) {
+		return;
+	}
+
+	// Start this early - it will start LED blinking and such
+	startStatusThreads();
 
 	/**
 	 * Initialize hardware drivers
@@ -230,7 +251,7 @@ void runRusEfi(void) {
 #endif // EFI_LUA
 
 	// Config could be completely bogus - don't start anything else!
-	if (validateConfig()) {
+	if (validateConfig(PASS_CONFIG_PARAMETER_SIGNATURE)) {
 		initStatusLoop();
 		/**
 		 * Now let's initialize actual engine control logic
@@ -238,21 +259,22 @@ void runRusEfi(void) {
 		 */
 		initEngineContoller(PASS_ENGINE_PARAMETER_SIGNATURE);
 
+	#if EFI_ENGINE_EMULATOR
+		initEngineEmulator(PASS_ENGINE_PARAMETER_SIGNATURE);
+	#endif
+
 		// This has to happen after RegisteredOutputPins are init'd: otherwise no change will be detected, and no init will happen
 		rememberCurrentConfiguration(PASS_ENGINE_PARAMETER_SIGNATURE);
 
 	#if EFI_PERF_METRICS
 		initTimePerfActions();
 	#endif
-			
-	#if EFI_ENGINE_EMULATOR
-		initEngineEmulator(PASS_ENGINE_PARAMETER_SIGNATURE);
-	#endif
-		startStatusThreads();
 
 		runSchedulingPrecisionTestIfNeeded();
 	}
+}
 
+void runMainLoop() {
 	efiPrintf("Running main loop");
 	main_loop_started = true;
 	/**

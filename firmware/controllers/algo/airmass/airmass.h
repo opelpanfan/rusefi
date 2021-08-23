@@ -1,7 +1,5 @@
 #pragma once
 
-#include "engine.h"
-
 class ValueProvider3D;
 
 struct AirmassResult {
@@ -10,7 +8,7 @@ struct AirmassResult {
 };
 
 struct AirmassModelBase {
-	virtual AirmassResult getAirmass(int rpm) const = 0;
+	virtual AirmassResult getAirmass(int rpm) = 0;
 };
 
 class AirmassVeModelBase : public AirmassModelBase {
