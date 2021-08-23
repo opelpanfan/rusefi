@@ -5,6 +5,7 @@
 
 pins:
   - pin: 2A
+# INJ1 Q312
     id: GPIOG_7
     class: outputs
     ts_name: 2A - INJ_1
@@ -28,6 +29,7 @@ pins:
     type: inj
 
   - pin: 2D
+#INJ2 Q305
     id: GPIOG_8
     class: outputs
     ts_name: 2D - INJ_2
@@ -50,6 +52,7 @@ pins:
     type: ls
 
   - pin: 2G
+#INJ3 Q309
     id: GPIOD_11
     class: outputs
     ts_name: 2G - INJ_3
@@ -72,6 +75,7 @@ pins:
     type: ls
 
   - pin: 2J
+#INJ4 Q310
     id: GPIOD_10
     class: outputs
     ts_name: 2J - INJ_4
@@ -300,7 +304,7 @@ pins:
     id: [GPIOB_0, EFI_ADC_8]
     class: [switch_inputs, analog_inputs]
     ts_name: 4F - AC_PRES/AUX1 (A23)
-    function: AC Pressure In
+    function: A/C Pressure In
 
   - pin: 4H
     id: [GPIOC_4, EFI_ADC_14]
@@ -455,6 +459,7 @@ pins:
     function: Evap
 
 info:
+  title: Hellen Miata NB2
   image:
     file: main.jpg
   pins:

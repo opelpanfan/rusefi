@@ -10,7 +10,7 @@
  * @author Andrey Belomutskiy, (c) 2012-2021
  */
 
-#include "global.h"
+#include "pch.h"
 
 #if EFI_SHAFT_POSITION_INPUT && (HAL_TRIGGER_USE_PAL == TRUE)
 
@@ -20,8 +20,6 @@
 #if (PAL_USE_CALLBACKS == FALSE)
 	#error "PAL_USE_CALLBACKS should be enabled to use HAL_TRIGGER_USE_PAL"
 #endif
-
-EXTERN_ENGINE;
 
 static ioline_t shaftLines[TRIGGER_SUPPORTED_CHANNELS];
 static ioline_t camLines[CAM_INPUTS_COUNT];
@@ -41,24 +39,7 @@ static void shaft_callback(void *arg) {
 	// todo: support for 3rd trigger input channel
 	// todo: start using real event time from HW event, not just software timer?
 
-	bool isPrimary = index == 0;
-	if (!isPrimary && !TRIGGER_WAVEFORM(needSecondTriggerInput)) {
-		return;
-	}
-
-	trigger_event_e signal;
-	// todo: add support for 3rd channel
-	if (rise) {
-		signal = isPrimary ?
-					(engineConfiguration->invertPrimaryTriggerSignal ? SHAFT_PRIMARY_FALLING : SHAFT_PRIMARY_RISING) :
-					(engineConfiguration->invertSecondaryTriggerSignal ? SHAFT_SECONDARY_FALLING : SHAFT_SECONDARY_RISING);
-	} else {
-		signal = isPrimary ?
-					(engineConfiguration->invertPrimaryTriggerSignal ? SHAFT_PRIMARY_RISING : SHAFT_PRIMARY_FALLING) :
-					(engineConfiguration->invertSecondaryTriggerSignal ? SHAFT_SECONDARY_RISING : SHAFT_SECONDARY_FALLING);
-	}
-
-	hwHandleShaftSignal(signal, stamp);
+	hwHandleShaftSignal(index, rise, stamp);
 }
 
 static void cam_callback(void *arg) {

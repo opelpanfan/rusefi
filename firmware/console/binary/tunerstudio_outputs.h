@@ -14,9 +14,9 @@
 #include "scaled_channel.h"
 #include "tunerstudio_debug_struct.h"
 
-typedef struct {
+struct egt_values_s {
 	uint16_t values[EGT_CHANNEL_COUNT];
-} egt_values_s;
+};
 
 
 enum class TsCalMode : uint8_t {
@@ -42,14 +42,14 @@ enum class TsCalMode : uint8_t {
  *
  * please be aware that 'float' (F32) type requires TunerStudio version 2.6 and later
  */
-typedef struct {
+struct TunerStudioOutputChannels {
 	/* see also [OutputChannels] in rusefi.input */
 
 	/**
 	 * Yes, I do not really enjoy packing bits into integers but we simply have too many boolean flags and I cannot
 	 * water 4 bytes per traffic - I want gauges to work as fast as possible
 	 */
-	unsigned int hasSdCard : 1; // bit 0, 72
+	unsigned int sd_present : 1; // bit 0, 72
 	unsigned int isIgnitionEnabledIndicator : 1; // bit 1
 	unsigned int isInjectionEnabledIndicator : 1; // bit 2
 	unsigned int unusedb3 : 1; // bit 3
@@ -71,7 +71,7 @@ typedef struct {
 	unsigned int isCltError : 1; // bit 19
 	unsigned int isMapError : 1; // bit 20
 	unsigned int isIatError : 1; // bit 21
-	unsigned int unusedAt22 : 1; // bit 22
+	unsigned int acState : 1; // bit 22 - 1 if AC is engaged, 0 otherwise
 	unsigned int isTriggerError : 1; // bit 23
 	unsigned int hasCriticalError : 1; // bit 24
 	unsigned int isWarnNow : 1; // bit 25
@@ -112,7 +112,7 @@ typedef struct {
 	// misc sensors
 	scaled_voltage vBatt; // 38
 	scaled_pressure oilPressure; // 40
-	scaled_angle vvtPosition; // 42
+	scaled_angle vvtPositionB1I; // 42
 
 	// Fuel math
 	scaled_channel<uint16_t, 1000> chargeAirMass; // 44  cylinder airmass in mg, 0-65 grams
@@ -237,7 +237,10 @@ typedef struct {
 
 	int16_t tuneCrc16; // 244
 
-	uint8_t sd_status; // 246
+	// Offset 246: bits
+	uint8_t sd_logging_internal : 1;	// bit 0
+	uint8_t sd_msd : 1;					// bit 1
+	uint8_t isFan2On : 1;				// bit 2
 
 	int8_t tcuCurrentGear; // 247
 
@@ -268,10 +271,9 @@ typedef struct {
 	scaled_lambda lambda2; // 286
 	scaled_afr airFuelRatio2; // 288
 
-	//288
-	scaled_angle secondVvtPositionBank1; // 290
-	scaled_angle vvtPositionBank2; // 292
-	scaled_angle secondVvtPositionBank2; // 294
+	scaled_angle vvtPositionB1E; // 290
+	scaled_angle vvtPositionB2I; // 292
+	scaled_angle vvtPositionB2E; // 294
 
 	scaled_percent fuelTrim[2];	// 296 & 298
 
@@ -288,7 +290,6 @@ typedef struct {
 
 	/* see also [OutputChannels] in rusefi.input */
 	/* see also TS_OUTPUT_SIZE in rusefi_config.txt */
-
-} TunerStudioOutputChannels;
+};
 
 extern TunerStudioOutputChannels tsOutputChannels;

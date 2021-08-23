@@ -3,11 +3,10 @@
  * See also mlq_file_format.txt
  */
 
+#include "pch.h"
+
 #include "binary_logging.h"
-#include "tunerstudio_outputs.h"
 #include "log_field.h"
-#include "efilib.h"
-#include "efitime.h"
 #include "crc.h"
 #include "buffered_writer.h"
 
@@ -40,7 +39,10 @@ static constexpr LogField fields[] = {
 	{tsOutputChannels.oilPressure, GAUGE_NAME_OIL_PRESSURE, GAUGE_NAME_FUEL_PRESSURE_HIGH_UNITS, 0},
 	{tsOutputChannels.lowFuelPressure, GAUGE_NAME_FUEL_PRESSURE_LOW, GAUGE_NAME_FUEL_PRESSURE_LOW_UNITS, 0},
 	{tsOutputChannels.highFuelPressure, GAUGE_NAME_FUEL_PRESSURE_HIGH, GAUGE_NAME_FUEL_PRESSURE_HIGH_UNITS, 0},
-	{tsOutputChannels.vvtPosition, GAUGE_NAME_VVT, "deg", 1},
+	{tsOutputChannels.vvtPositionB1I, GAUGE_NAME_VVT_B1I, "deg", 1},
+	{tsOutputChannels.vvtPositionB1E, GAUGE_NAME_VVT_B1E, "deg", 1},
+	{tsOutputChannels.vvtPositionB2I, GAUGE_NAME_VVT_B2I, "deg", 1},
+	{tsOutputChannels.vvtPositionB2E, GAUGE_NAME_VVT_B2E, "deg", 1},
 	{tsOutputChannels.chargeAirMass, GAUGE_NAME_AIR_MASS, "g", 3},
 	{tsOutputChannels.currentTargetAfr, GAUGE_NAME_TARGET_AFR, "afr", 2},
 	{tsOutputChannels.targetLambda, GAUGE_NAME_TARGET_LAMBDA, "", 3},

@@ -1,16 +1,12 @@
-#include "global.h"
-#include "adc_inputs.h"
+#include "pch.h"
+
 #include "adc_subscription.h"
-#include "engine.h"
-#include "error_handling.h"
 #include "functional_sensor.h"
 #include "redundant_sensor.h"
 #include "redundant_ford_tps.h"
 #include "proxy_sensor.h"
 #include "linear_func.h"
 #include "tps.h"
-
-EXTERN_ENGINE;
 
 LinearFunc tpsFunc1p(TPS_TS_CONVERSION);
 LinearFunc tpsFunc1s(TPS_TS_CONVERSION);
@@ -59,7 +55,7 @@ static bool configureTps(LinearFunc& func, adc_channel_e channel, float closed, 
 
 	// If the voltage for closed vs. open is very near, something is wrong with your calibration
 	if (split < 0.5f) {
-		firmwareError(OBD_Throttle_Position_Sensor_Circuit_Malfunction, "\"%s\" problem: open %.2f/closed %.2f cal values are too close together. Check your wiring!", msg,
+		firmwareError(OBD_Throttle_Position_Sensor_Circuit_Malfunction, "\"%s\" problem: open %.2f/closed %.2f cal values are too close together. Check your calibration and wiring!", msg,
 				open,
 				closed);
 		return false;

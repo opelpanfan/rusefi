@@ -9,9 +9,7 @@
 
 #include <math.h>
 #include "datalogging.h"
-#include "efilib.h"
 #include "obd_error_codes.h"
-#include "error_handling.h"
 
 #include <type_traits>
 
@@ -23,10 +21,20 @@
 
 int findIndex(const float array[], int size, float value);
 #define findIndexMsg(msg, array, size, value) findIndexMsgExt<float>(msg, array, size, value)
-void ensureArrayIsAscending(const char *msg, const float array[], int size);
 int findIndex2(const float array[], unsigned size, float value);
 float interpolateClamped(float x1, float y1, float x2, float y2, float x);
 float interpolateMsg(const char *msg, float x1, float y1, float x2, float y2, float x);
+
+template<typename TValue, int TSize>
+void ensureArrayIsAscending(const char* msg, const TValue (&values)[TSize]) {
+	for (size_t i = 0; i < TSize - 1; i++) {
+		auto cur = values[i];
+		auto next = values[i + 1];
+		if (next <= cur) {
+			firmwareError(CUSTOM_ERR_AXIS_ORDER, "Invalid table axis (must be ascending!): %s %f %f at %d", msg, cur, next, i);
+		}
+	}
+}
 
 namespace priv {
 struct BinResult

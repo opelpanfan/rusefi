@@ -5,16 +5,14 @@
  * @author Andrey Belomutskiy, (c) 2012-2021
  */
 
-#include "global.h"
+#include "pch.h"
 #include "trigger_input.h"
 
 /* TODO:
  * - merge comparator trigger
  */
 
-#if (EFI_PROD_CODE && EFI_SHAFT_POSITION_INPUT) || defined(__DOXYGEN__)
-
-EXTERN_ENGINE;
+#if (EFI_SHAFT_POSITION_INPUT) || defined(__DOXYGEN__)
 
 #if (HAL_USE_ICU == TRUE) || (HAL_TRIGGER_USE_PAL == TRUE)
 
@@ -109,7 +107,7 @@ static void turnOffTriggerInputPin(int index, bool isTriggerShaft) {
 		if (shaftTriggerType[index] == TRIGGER_ICU) {
 			icuTriggerTurnOffInputPin(brainPin);
 		}
-#endif
+#endif /* EFI_ICU_INPUTS */
 		if (shaftTriggerType[index] == TRIGGER_EXTI) {
 			extiTriggerTurnOffInputPin(brainPin);
 		}
@@ -120,7 +118,7 @@ static void turnOffTriggerInputPin(int index, bool isTriggerShaft) {
 		if (camTriggerType[index] == TRIGGER_ICU) {
 			icuTriggerTurnOffInputPin(brainPin);
 		}
-#endif
+#endif /* EFI_ICU_INPUTS */
 		if (camTriggerType[index] == TRIGGER_EXTI) {
 			extiTriggerTurnOffInputPin(brainPin);
 		}
@@ -133,7 +131,7 @@ static void turnOffTriggerInputPin(int index, bool isTriggerShaft) {
 /* Exported functions.														*/
 /*==========================================================================*/
 
-void stopTriggerInputPins(void) {
+void stopTriggerInputPins(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 	for (int i = 0; i < TRIGGER_SUPPORTED_CHANNELS; i++) {
 		if (isConfigurationChanged(triggerInputPins[i])) {
 			turnOffTriggerInputPin(i, true);
@@ -146,7 +144,9 @@ void stopTriggerInputPins(void) {
 	}
 }
 
-void startTriggerInputPins(void) {
+static const char* const camNames[] = { "cam1", "cam2", "cam3", "cam4"};
+
+void startTriggerInputPins(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 	for (int i = 0; i < TRIGGER_SUPPORTED_CHANNELS; i++) {
 		if (isConfigurationChanged(triggerInputPins[i])) {
 			const char * msg = (i == 0 ? "Trigger #1" : (i == 1 ? "Trigger #2" : "Trigger #3"));
@@ -156,26 +156,47 @@ void startTriggerInputPins(void) {
 
 	for (int i = 0; i < CAM_INPUTS_COUNT; i++) {
 		if (isConfigurationChanged(camInputs[i])) {
-			turnOnTriggerInputPin("Cam", i, false);
+			turnOnTriggerInputPin(camNames[i], i, false);
 		}
 	}
 }
 
-void turnOnTriggerInputPins() {
+void turnOnTriggerInputPins(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 	/* init all trigger HW available */
 	icuTriggerTurnOnInputPins();
 	extiTriggerTurnOnInputPins();
 
-	applyNewTriggerInputPins();
+	applyNewTriggerInputPins(PASS_ENGINE_PARAMETER_SIGNATURE);
 }
 
 #endif /* (HAL_USE_ICU == TRUE) || (HAL_TRIGGER_USE_PAL == TRUE) */
 
-void applyNewTriggerInputPins(void) {
+
+void stopTriggerDebugPins(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
+	for (int i = 0; i < TRIGGER_INPUT_PIN_COUNT; i++) {
+		efiSetPadUnusedIfConfigurationChanged(triggerInputDebugPins[i]);
+	}
+	for (int i = 0; i < CAM_INPUTS_COUNT; i++) {
+		efiSetPadUnusedIfConfigurationChanged(camInputsDebug[i]);
+	}
+}
+
+void startTriggerDebugPins(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
+	for (int i = 0; i < TRIGGER_INPUT_PIN_COUNT; i++) {
+		efiSetPadModeIfConfigurationChanged("trigger debug", triggerInputDebugPins[i], PAL_MODE_OUTPUT_PUSHPULL);
+	}
+	for (int i = 0; i < CAM_INPUTS_COUNT; i++) {
+		efiSetPadModeIfConfigurationChanged("cam debug", camInputsDebug[i], PAL_MODE_OUTPUT_PUSHPULL);
+	}
+}
+
+void applyNewTriggerInputPins(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
+#if EFI_PROD_CODE
 	// first we will turn off all the changed pins
-	stopTriggerInputPins();
+	stopTriggerInputPins(PASS_ENGINE_PARAMETER_SIGNATURE);
 	// then we will enable all the changed pins
-	startTriggerInputPins();
+	startTriggerInputPins(PASS_ENGINE_PARAMETER_SIGNATURE);
+#endif /* EFI_PROD_CODE */
 }
 
 #endif /* EFI_SHAFT_POSITION_INPUT */

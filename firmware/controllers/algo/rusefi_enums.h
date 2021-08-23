@@ -194,17 +194,23 @@ typedef enum {
 	SUBARUEG33_DEFAULTS = 70,
 
 	HELLEN_121_VAG = ET_HELLEN_121_VAG,
-	HELLEN_121_NISSAN = ET_HELLEN_121_NISSAN,
+	HELLEN_121_NISSAN_6_CYL = ET_HELLEN_121_NISSAN_6_CYL,
 	HELLEN_55_BMW = ET_HELLEN_55_BMW,
 	HELLEN_88_BMW = ET_HELLEN_88_BMW,
 	HELLEN_134_BMW = ET_HELLEN_134_BMW,
 	HELLEN_154_VAG = ET_HELLEN_154_VAG,
 
 	HELLEN_121_VAG_5_CYL = ET_HELLEN_121_VAG_5_CYL,
-	HELLEN_121_VAG_6_CYL = ET_HELLEN_121_VAG_6_CYL,
+	HELLEN_121_VAG_V6_CYL = ET_HELLEN_121_VAG_V6_CYL,
+	HELLEN_121_VAG_VR6_CYL = ET_HELLEN_121_VAG_VR6_CYL,
 	HELLEN_121_VAG_8_CYL = ET_HELLEN_121_VAG_8_CYL,
 
 	HELLEN_NA94 = ET_HELLEN_NA94,
+
+	HELLEN_154_HYUNDAI = ET_HELLEN_154_HYUNDAI,
+	HELLEN_121_NISSAN_4_CYL = ET_HELLEN_121_NISSAN_4_CYL,
+
+	HELLEN_NB2_36 = ET_HELLEN_NB2_36,
 
 	/**
 	 * this configuration has as few pins configured as possible
@@ -218,6 +224,8 @@ typedef enum {
 
 	BMW_M73_MRE = 104,
 	BMW_M73_MRE_SLAVE = 105,
+
+	TEST_ROTARY = ET_TEST_ROTARY,
 
 	Force_4_bytes_size_engine_type = ENUM_32_BITS,
 } engine_type_e;
@@ -394,14 +402,26 @@ typedef enum {
 
 	TT_KAWA_KX450F = TT_TT_KAWA_KX450F,
 
+	TT_NISSAN_VQ35 = TT_TT_NISSAN_VQ35,
+
+	TT_VVT_NISSAN_VQ35 = TT_TT_VVT_NISSAN_VQ35,
+
+	TT_NISSAN_VQ30 = TT_TT_NISSAN_VQ30,
+
+	TT_NISSAN_QR25 = TT_TT_NISSAN_QR25,
+
+	TT_TEMP_62 = TT_TT_TEMP_62,
+
+
 	// do not forget to edit "#define trigger_type_e_enum" line in integration/rusefi_config.txt file to propogate new value to rusefi.ini TS project
 	// do not forget to invoke "gen_config.bat" once you make changes to integration/rusefi_config.txt
 	// todo: one day a hero would integrate some of these things into Makefile in order to reduce manual magic
 	//
 	// Another point: once you add a new trigger, run get_trigger_images.bat which would run rusefi_test.exe from unit_tests
 	//
-	TT_UNUSED = 58, // this is used if we want to iterate over all trigger types
+	TT_UNUSED = 63, // this is used if we want to iterate over all trigger types
 
+	// todo: convert to ENUM_16_BITS? I can see 257 triggers but not 65K triggers
 	Force_4_bytes_size_trigger_type = ENUM_32_BITS,
 } trigger_type_e; // TriggerProcessor.java has this "trigger_type_e" name hard-coded!
 
@@ -442,7 +462,7 @@ typedef enum  __attribute__ ((__packed__)) {
 	/**
 	 * This mode is useful for troubleshooting and research - events are logged but no effects on phase synchronization
 	 */
-	VVT_INACTIVE = 0,
+	VVT_INACTIVE = VM_VVT_INACTIVE,
 
 	/**
 	 * Single-tooth cam sensor mode where TDC and cam signal happen in opposite 360 degree of 720 degree engine cycle
@@ -475,6 +495,8 @@ typedef enum  __attribute__ ((__packed__)) {
 	VVT_FORD_ST170 = 7,
 
 	VVT_BARRA_3_PLUS_1 = 8,
+
+	VVT_NISSAN_VQ = 9,
 } vvt_mode_e;
 
 /**
@@ -493,6 +515,8 @@ typedef enum {
 	LM_REAL_MAF = 4,
 
 	LM_ALPHA_N = 5,
+
+	LM_LUA = 6,
 
 	// This mode is for unit testing only, so that tests don't have to rely on a particular real airmass mode
 	LM_MOCK = 100,
@@ -616,7 +640,7 @@ typedef enum {
 	 * in this mode we use as many coils as we have cylinders
 	 */
 	IM_INDIVIDUAL_COILS = 1,
-	IM_WASTED_SPARK = 2,
+	IM_WASTED_SPARK = IM_IM_WASTED_SPARK,
 
 	/**
 	 * some v12 engines line BMW M70 and M73 run two distributors, one for each bank of cylinders
@@ -644,7 +668,7 @@ typedef enum {
 	 * todo: we might want to implement one additional mode where each pair of injectors is floating twice per engine cycle.
 	 * todo: this could reduce phase offset from injection to stroke but would not work great for large injectors
 	 */
-	IM_BATCH = 2,
+	IM_BATCH = IM_IM_BATCH,
 	/**
 	 * only one injector located in throttle body
 	 */
@@ -737,10 +761,8 @@ typedef enum {
 	DBG_EL_ACCEL = 4,
 	DBG_TRIGGER_COUNTERS = 5,
 	DBG_FSIO_ADC = 6,
-	/**
-	 * VVT valve control often uses AUX pid #1
-	 */
-	DBG_AUX_PID_1 = 7,
+
+	DBG_VVT_1_PID = 7,
 	/**
 	 * VVT position debugging - not VVT valve control. See AUX pid #1 debug for valve position.
 	 */
@@ -792,7 +814,7 @@ typedef enum {
 	DBG_ETB_AUTOTUNE = 39,
 	DBG_COMPOSITE_LOG = 40,
 	DBG_FSIO_EXPRESSION_8_14 = 41,
-	DBG_FSIO_SPECIAL = 42,
+	DBG_UNUSED_42 = 42,
 	DBG_INJECTOR_COMPENSATION = 43,
 	DBG_DYNO_VIEW = 44,
 	// todo: because of getEnumOptionsForTunerStudio 'getEnumOptionsForTunerStudio' would not work here
@@ -801,6 +823,11 @@ typedef enum {
 	DBG_RUSEFI_WIDEBAND = 46,
 	DBG_TCU = 47,
 	DBG_LUA = 48,
+	DBG_VVT_2_PID = 49,
+	DBG_VVT_3_PID = 50,
+	DBG_VVT_4_PID = 51,
+	MODE_52 = 52,
+	MODE_53 = 53,
 
 	Force_4_bytes_size_debug_mode_e = ENUM_32_BITS,
 } debug_mode_e;
@@ -932,6 +959,10 @@ typedef enum {
     CAN_BUS_BMW_E90 = 6,
 	CAN_BUS_Haltech = 7,
 	CAN_BUS_MQB = 8,
+	CAN_BUS_NISSAN_VQ = 9,
+	CAN_BUS_GENESIS_COUPE = 10,
+	CAN_BUS_HONDA_K = 11,
+
 
 	Internal_ForceMyEnumIntSize_can_nbc = ENUM_32_BITS,
 } can_nbc_e;
@@ -1003,6 +1034,7 @@ typedef enum __attribute__ ((__packed__)) {
 	GPPWM_AuxTemp2 = 7,
 	GPPWM_Zero = 8,
 	GPPWM_AccelPedal = 9,
+	GPPWM_Vbatt = 10,
 } gppwm_channel_e;
 
 typedef enum __attribute__ ((__packed__)) {
@@ -1049,3 +1081,8 @@ typedef enum __attribute__ ((__packed__)) {
 	ICM_FixedRailPressure = 1,
 	ICM_SensedRailPressure = 2,
 } injector_compensation_mode_e;
+
+typedef enum __attribute__ ((__packed__)) {
+	INJ_None = 0,
+	INJ_PolynomialAdder = 1,
+} InjectorNonlinearMode;

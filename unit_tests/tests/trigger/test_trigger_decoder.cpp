@@ -5,11 +5,9 @@
  * @author Andrey Belomutskiy, (c) 2012-2020
  */
 
-#include "engine_test_helper.h"
+#include "pch.h"
+
 #include "trigger_decoder.h"
-#include "engine_math.h"
-#include "allsensors.h"
-#include "engine_controller.h"
 #include "ford_aspire.h"
 #include "dodge_neon.h"
 #include "ford_1995_inline_6.h"
@@ -21,7 +19,6 @@
 #include "fuel_math.h"
 #include "spark_logic.h"
 #include "trigger_universal.h"
-#include "sensor.h"
 
 using ::testing::_;
 
@@ -70,7 +67,7 @@ static void testDodgeNeonDecoder(void) {
 
 	TriggerState state;
 
-	ASSERT_FALSE(state.shaft_is_synchronized) << "1 shaft_is_synchronized";
+	ASSERT_FALSE(state.getShaftSynchronized()) << "1 shaft_is_synchronized";
 
 //	int r = 0;
 //	processTriggerEvent(&state, shape, &ec->triggerConfig, SHAFT_PRIMARY_RISING, r + 60);
@@ -298,6 +295,8 @@ extern bool_t debugSignalExecutor;
 TEST(misc, testRpmCalculator) {
 	WITH_ENGINE_TEST_HELPER(FORD_INLINE_6_1995);
 
+	ENGINE(tdcMarkEnabled) = false;
+
 	// These tests were written when the default target AFR was 14.0, so replicate that
 	engineConfiguration->stoichRatioPrimary = 140;
 
@@ -337,7 +336,7 @@ TEST(misc, testRpmCalculator) {
 
 //	debugSignalExecutor = true;
 
-	ASSERT_EQ(engine->triggerCentral.triggerState.shaft_is_synchronized, 1);
+	ASSERT_EQ(engine->triggerCentral.triggerState.getShaftSynchronized(), 1);
 
 	eth.moveTimeForwardMs(5 /*ms*/);
 
@@ -517,7 +516,7 @@ TEST(misc, testTriggerDecoder) {
 		applyNonPersistentConfiguration(PASS_ENGINE_PARAMETER_SIGNATURE);
 
 	}
-	testTriggerDecoder2("miata 1990", MIATA_1990, 11, 0.2985, 0.3890);
+	testTriggerDecoder2("miata 1990", MIATA_1990, 4, 1 - 0.7015, 1 - 0.3890);
 	testTriggerDecoder3("citroen", CITROEN_TU3JP, 0, 0.4833, 0.0, 2.9994);
 
 	testTriggerDecoder2("CAMARO_4", CAMARO_4, 40, 0.5, 0);
@@ -689,6 +688,7 @@ void doTestFuelSchedulerBug299smallAndMedium(int startUpDelayMs) {
 	printf("*************************************************** testFuelSchedulerBug299 small to medium\r\n");
 
 	WITH_ENGINE_TEST_HELPER(TEST_ENGINE);
+	ENGINE(tdcMarkEnabled) = false;
 	eth.moveTimeForwardMs(startUpDelayMs); // nice to know that same test works the same with different anount of idle time on start
 	setTestBug299(&eth);
 
@@ -987,6 +987,7 @@ TEST(big, testSequential) {
 
 TEST(big, testFuelSchedulerBug299smallAndLarge) {
 	WITH_ENGINE_TEST_HELPER(TEST_ENGINE);
+	ENGINE(tdcMarkEnabled) = false;
 	setTestBug299(&eth);
 	ASSERT_EQ( 4,  engine->executor.size()) << "Lqs#0";
 
@@ -1101,6 +1102,7 @@ TEST(big, testSparkReverseOrderBug319) {
 	printf("*************************************************** testSparkReverseOrderBug319 small to medium\r\n");
 
 	WITH_ENGINE_TEST_HELPER(TEST_ENGINE);
+	ENGINE(tdcMarkEnabled) = false;
 
 	engineConfiguration->useOnlyRisingEdgeForTrigger = false;
 	engineConfiguration->isInjectionEnabled = false;

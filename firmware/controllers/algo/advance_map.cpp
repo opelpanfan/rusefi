@@ -18,20 +18,13 @@
  * If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "global.h"
-#include "engine_configuration.h"
-#include "engine.h"
+#include "pch.h"
+
 #include "advance_map.h"
-#include "interpolation.h"
-#include "engine_math.h"
-#include "sensor.h"
 #include "idle_thread.h"
-#include "allsensors.h"
 #include "launch_control.h"
 
 #if EFI_ENGINE_CONTROL
-
-EXTERN_ENGINE;
 
 static ign_Map3D_t advanceMap;
 static ign_Map3D_t iatAdvanceCorrectionMap;
@@ -101,14 +94,12 @@ angle_t getAdvanceCorrections(int rpm DECLARE_ENGINE_PARAMETER_SUFFIX) {
 #if EFI_TUNER_STUDIO
 		tsOutputChannels.debugFloatField1 = iatCorrection;
 		tsOutputChannels.debugFloatField2 = engine->engineState.cltTimingCorrection;
-		tsOutputChannels.debugFloatField3 = engine->fsioState.fsioTimingAdjustment;
 		tsOutputChannels.debugFloatField4 = pidTimingCorrection;
 		tsOutputChannels.debugIntField1 = engine->engineState.multispark.count;
 #endif /* EFI_TUNER_STUDIO */
 	}
 
 	return iatCorrection
-		+ engine->fsioState.fsioTimingAdjustment
 		+ engine->engineState.cltTimingCorrection
 		+ pidTimingCorrection
 		// todo: uncomment once we get usable knock   - engine->knockCount

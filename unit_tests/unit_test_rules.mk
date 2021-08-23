@@ -8,6 +8,8 @@ INCDIR += 	$(UNIT_TESTS_DIR)/googletest/googlemock/include \
           	$(UNIT_TESTS_DIR)/googletest/googletest \
           	$(UNIT_TESTS_DIR)/googletest/googletest/include \
 
+PCH_DIR = ../firmware/pch
+PCHSRC = $(PCH_DIR)/pch.h
 
 include $(PROJECT_DIR)/rusefi_rules.mk
 
@@ -29,7 +31,7 @@ endif
 USE_OPT += -DEFI_UNIT_TEST=1 -DEFI_PROD_CODE=0 -DEFI_SIMULATOR=0
 
 # Pretend we are all different hardware so that all canned engine configs are included
-USE_OPT += -DHW_MICRO_RUSEFI=1 -DHW_PROTEUS=1 -DHW_FRANKENSO=1
+USE_OPT += -DHW_MICRO_RUSEFI=1 -DHW_PROTEUS=1 -DHW_FRANKENSO=1 -DHW_HELLEN=1
 
 ifeq ($(CCACHE_DIR),)
  $(info No CCACHE_DIR)
@@ -45,7 +47,7 @@ endif
 
 # C++ specific options here (added to USE_OPT).
 ifeq ($(USE_CPPOPT),)
-  USE_CPPOPT = -std=gnu++17 -fno-rtti -fpermissive -fexceptions -fno-use-cxa-atexit
+  USE_CPPOPT = -std=gnu++17 -fno-rtti -fpermissive -fexceptions -fno-use-cxa-atexit -Winvalid-pch
 endif
 
 # Enable this if you want the linker to remove unused code and data
@@ -191,3 +193,4 @@ $(error Please run 'make' again. Please make sure you have 'git' command in PATH
 endif
 
 include $(UNIT_TESTS_DIR)/rules.mk
+include $(PROJECT_DIR)/rusefi_pch.mk

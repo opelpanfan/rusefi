@@ -6,35 +6,22 @@
  * @author Andrey Belomutskiy, (c) 2012-2020
  */
 
-#include "global.h"
+#include "pch.h"
+
 #if !EFI_UNIT_TEST
 #include "os_access.h"
-#include "settings.h"
 #include "eficonsole.h"
-#include "engine_configuration.h"
-#include "adc_inputs.h"
-#include "engine_controller.h"
-#include "thermistors.h"
-#include "adc_inputs.h"
-#include "interpolation.h"
-#include "map.h"
 #include "trigger_decoder.h"
 #include "console_io.h"
-#include "engine.h"
-#include "efi_gpio.h"
-#include "engine_math.h"
 #include "idle_thread.h"
-#include "allsensors.h"
 #include "alternator_controller.h"
 #include "trigger_emulator_algo.h"
-#include "sensor.h"
 
 #if EFI_PROD_CODE
 #include "vehicle_speed.h"
 #include "rtc_helper.h"
 #include "can_hw.h"
 #include "rusefi.h"
-#include "pin_repository.h"
 #include "hardware.h"
 #endif /* EFI_PROD_CODE */
 
@@ -55,8 +42,6 @@ extern WaveChart waveChart;
 #if !defined(SETTINGS_LOGGING_BUFFER_SIZE)
 #define SETTINGS_LOGGING_BUFFER_SIZE 1000
 #endif /* SETTINGS_LOGGING_BUFFER_SIZE */
-
-EXTERN_ENGINE;
 
 void printSpiState(const engine_configuration_s *engineConfiguration) {
 	efiPrintf("spi 1=%s/2=%s/3=%s/4=%s",
@@ -101,49 +86,6 @@ static void printOutputs(const engine_configuration_s *engineConfiguration) {
 	efiPrintf("alternator field: mode %s @ %s",
 			getPin_output_mode_e(engineConfiguration->alternatorControlPinMode),
 			hwPortname(engineConfiguration->alternatorControlPin));
-}
-
-
-/**
- * These should be not very long because these are displayed on the LCD as is
- */
-const char* getConfigurationName(engine_type_e engineType) {
-	switch (engineType) {
-	case DEFAULT_FRANKENSO:
-		return "DEFAULT_FRANKENSO";
-	case DODGE_NEON_1995:
-		return "Neon95";
-	case FORD_ASPIRE_1996:
-		return "Aspire";
-	case NISSAN_PRIMERA:
-		return "Primera";
-	case HONDA_ACCORD_CD:
-		return "Accord3";
-	case HONDA_ACCORD_CD_TWO_WIRES:
-		return "Accord2";
-	case HONDA_ACCORD_1_24_SHIFTED:
-		return "Accord24sh";
-	case HONDA_ACCORD_CD_DIP:
-		return "HondaD";
-	case FORD_INLINE_6_1995:
-		return "Fordi6";
-	case GY6_139QMB:
-		return "Gy6139";
-	case MAZDA_MIATA_NB1:
-		return "MiataNB1";
-	case FORD_ESCORT_GT:
-		return "EscrtGT";
-	case CITROEN_TU3JP:
-		return "TU3JP";
-	case MITSU_4G93:
-		return "Mi4G93";
-	case MIATA_1990:
-		return "MX590";
-	case MIATA_1996:
-		return "MX596";
-	default:
-		return getEngine_type_e(engineType);
-	}
 }
 
 /**
@@ -210,7 +152,7 @@ void printConfiguration(const engine_configuration_s *engineConfiguration) {
 #endif /* EFI_PROD_CODE */
 }
 
-static void doPrintConfiguration() {
+static void doPrintConfiguration(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 	printConfiguration(engineConfiguration);
 }
 
@@ -224,23 +166,6 @@ static void setTimingMode(int value) {
 	engineConfiguration->timingMode = (timing_mode_e) value;
 	doPrintConfiguration();
 	incrementGlobalConfigurationVersion(PASS_ENGINE_PARAMETER_SIGNATURE);
-}
-
-void setEngineType(int value) {
-	{
-		chibios_rt::CriticalSectionLocker csl;
-
-		engineConfiguration->engineType = (engine_type_e)value;
-		resetConfigurationExt((engine_type_e)value PASS_ENGINE_PARAMETER_SUFFIX);
-		engine->resetEngineSnifferIfInTestMode();
-
-	#if EFI_INTERNAL_FLASH
-		writeToFlashNow();
-	//	scheduleReset();
-	#endif /* EFI_PROD_CODE */
-	}
-	incrementGlobalConfigurationVersion(PASS_ENGINE_PARAMETER_SIGNATURE);
-	doPrintConfiguration();
 }
 
 static void setIdleSolenoidFrequency(int value) {
@@ -513,6 +438,14 @@ static void setPotSpi(int spi) {
 	engineConfiguration->digitalPotentiometerSpiDevice = (spi_device_e) spi;
 }
 
+static brain_pin_e parseBrainPinWithErrorMessage(const char *pinName) {
+	brain_pin_e pin = parseBrainPin(pinName);
+	if (pin == GPIO_INVALID) {
+		efiPrintf("invalid pin name [%s]", pinName);
+	}
+	return pin;
+}
+
 /**
  * For example:
  *   set_ignition_pin 1 PD7
@@ -521,12 +454,10 @@ static void setPotSpi(int spi) {
  */
 static void setIgnitionPin(const char *indexStr, const char *pinName) {
 	int index = atoi(indexStr) - 1; // convert from human index into software index
-	if (index < 0 || index >= IGNITION_PIN_COUNT)
+	if (index < 0 || index >= MAX_CYLINDER_COUNT)
 		return;
-	brain_pin_e pin = parseBrainPin(pinName);
-	// todo: extract method - code duplication with other 'set_xxx_pin' methods?
+	brain_pin_e pin = parseBrainPinWithErrorMessage(pinName);
 	if (pin == GPIO_INVALID) {
-		efiPrintf("invalid pin name [%s]", pinName);
 		return;
 	}
 	efiPrintf("setting ignition pin[%d] to %s please save&restart", index, hwPortname(pin));
@@ -535,20 +466,38 @@ static void setIgnitionPin(const char *indexStr, const char *pinName) {
 }
 
 // this method is useful for desperate time debugging
-static void readPin(const char *pinName) {
-	brain_pin_e pin = parseBrainPin(pinName);
+void readPin(const char *pinName) {
+	brain_pin_e pin = parseBrainPinWithErrorMessage(pinName);
 	if (pin == GPIO_INVALID) {
-		efiPrintf("invalid pin name [%s]", pinName);
 		return;
 	}
 	int physicalValue = palReadPad(getHwPort("read", pin), getHwPin("read", pin));
 	efiPrintf("pin %s value %d", hwPortname(pin), physicalValue);
 }
 
-static void setIndividualPin(const char *pinName, brain_pin_e *targetPin, const char *name) {
-	brain_pin_e pin = parseBrainPin(pinName);
+
+// this method is useful for desperate time debugging or hardware validation
+static void benchSetPinValue(const char *pinName, int bit) {
+	brain_pin_e pin = parseBrainPinWithErrorMessage(pinName);
 	if (pin == GPIO_INVALID) {
-		efiPrintf("invalid pin name [%s]", pinName);
+		return;
+	}
+	palWritePad(getHwPort("write", pin), getHwPin("write", pin), bit);
+	efiPrintf("pin %s set value", hwPortname(pin));
+	readPin(pinName);
+}
+
+static void benchClearPin(const char *pinName) {
+	benchSetPinValue(pinName, 0);
+}
+
+static void benchSetPin(const char *pinName) {
+	benchSetPinValue(pinName, 1);
+}
+
+static void setIndividualPin(const char *pinName, brain_pin_e *targetPin, const char *name) {
+	brain_pin_e pin = parseBrainPinWithErrorMessage(pinName);
+	if (pin == GPIO_INVALID) {
 		return;
 	}
 	efiPrintf("setting %s pin to %s please save&restart", name, hwPortname(pin));
@@ -616,12 +565,10 @@ static void setFuelPumpPin(const char *pinName) {
 
 static void setInjectionPin(const char *indexStr, const char *pinName) {
 	int index = atoi(indexStr) - 1; // convert from human index into software index
-	if (index < 0 || index >= INJECTION_PIN_COUNT)
+	if (index < 0 || index >= MAX_CYLINDER_COUNT)
 		return;
-	brain_pin_e pin = parseBrainPin(pinName);
-	// todo: extract method - code duplication with other 'set_xxx_pin' methods?
+	brain_pin_e pin = parseBrainPinWithErrorMessage(pinName);
 	if (pin == GPIO_INVALID) {
-		efiPrintf("invalid pin name [%s]", pinName);
 		return;
 	}
 	efiPrintf("setting injection pin[%d] to %s please save&restart", index, hwPortname(pin));
@@ -639,10 +586,8 @@ static void setTriggerInputPin(const char *indexStr, const char *pinName) {
 	int index = atoi(indexStr);
 	if (index < 0 || index > 2)
 		return;
-	brain_pin_e pin = parseBrainPin(pinName);
-	// todo: extract method - code duplication with other 'set_xxx_pin' methods?
+	brain_pin_e pin = parseBrainPinWithErrorMessage(pinName);
 	if (pin == GPIO_INVALID) {
-		efiPrintf("invalid pin name [%s]", pinName);
 		return;
 	}
 	efiPrintf("setting trigger pin[%d] to %s please save&restart", index, hwPortname(pin));
@@ -666,9 +611,8 @@ static void setEgtCSPin(const char *indexStr, const char *pinName) {
 	int index = atoi(indexStr);
 	if (index < 0 || index >= EGT_CHANNEL_COUNT)
 		return;
-	brain_pin_e pin = parseBrainPin(pinName);
+	brain_pin_e pin = parseBrainPinWithErrorMessage(pinName);
 	if (pin == GPIO_INVALID) {
-		efiPrintf("invalid pin name [%s]", pinName);
 		return;
 	}
 	efiPrintf("setting EGT CS pin[%d] to %s please save&restart", index, hwPortname(pin));
@@ -680,9 +624,8 @@ static void setTriggerSimulatorPin(const char *indexStr, const char *pinName) {
 	int index = atoi(indexStr);
 	if (index < 0 || index >= TRIGGER_SIMULATOR_PIN_COUNT)
 		return;
-	brain_pin_e pin = parseBrainPin(pinName);
+	brain_pin_e pin = parseBrainPinWithErrorMessage(pinName);
 	if (pin == GPIO_INVALID) {
-		efiPrintf("invalid pin name [%s]", pinName);
 		return;
 	}
 	efiPrintf("setting trigger simulator pin[%d] to %s please save&restart", index, hwPortname(pin));
@@ -694,9 +637,8 @@ static void setTriggerSimulatorPin(const char *indexStr, const char *pinName) {
 // set_analog_input_pin pps pa4
 // set_analog_input_pin afr none
 static void setAnalogInputPin(const char *sensorStr, const char *pinName) {
-	brain_pin_e pin = parseBrainPin(pinName);
+	brain_pin_e pin = parseBrainPinWithErrorMessage(pinName);
 	if (pin == GPIO_INVALID) {
-		efiPrintf("invalid pin name [%s]", pinName);
 		return;
 	}
 	adc_channel_e channel = getAdcChannel(pin);
@@ -735,9 +677,8 @@ static void setLogicInputPin(const char *indexStr, const char *pinName) {
 	if (index < 0 || index > 2) {
 		return;
 	}
-	brain_pin_e pin = parseBrainPin(pinName);
+	brain_pin_e pin = parseBrainPinWithErrorMessage(pinName);
 	if (pin == GPIO_INVALID) {
-		efiPrintf("invalid pin name [%s]", pinName);
 		return;
 	}
 	efiPrintf("setting logic input pin[%d] to %s please save&restart", index, hwPortname(pin));
@@ -746,9 +687,8 @@ static void setLogicInputPin(const char *indexStr, const char *pinName) {
 }
 
 static void showPinFunction(const char *pinName) {
-	brain_pin_e pin = parseBrainPin(pinName);
+	brain_pin_e pin = parseBrainPinWithErrorMessage(pinName);
 	if (pin == GPIO_INVALID) {
-		efiPrintf("invalid pin name [%s]", pinName);
 		return;
 	}
 	efiPrintf("Pin %s: [%s]", pinName, getPinFunction(pin));
@@ -930,20 +870,20 @@ static void printAllInfo(void) {
 #endif
 }
 
-typedef struct {
+struct plain_get_integer_s {
 	const char *token;
 	int *value;
-} plain_get_integer_s;
+};
 
-typedef struct {
+struct plain_get_short_s {
 	const char *token;
 	uint16_t *value;
-} plain_get_short_s;
+};
 
-typedef struct {
+struct plain_get_float_s {
 	const char *token;
 	float *value;
-} plain_get_float_s;
+};
 
 
 #if ! EFI_UNIT_TEST
@@ -1073,15 +1013,15 @@ static void setFsioCurve2Value(float value) {
 	setLinearCurve(engineConfiguration->fsioCurve2, value, value, 1);
 }
 
-typedef struct {
+struct command_i_s {
 	const char *token;
 	VoidInt callback;
-} command_i_s;
+};
 
-typedef struct {
+struct command_f_s {
 	const char *token;
 	VoidFloat callback;
-} command_f_s;
+};
 
 const command_f_s commandsF[] = {
 #if EFI_ENGINE_CONTROL
@@ -1112,6 +1052,7 @@ const command_f_s commandsF[] = {
 		{"fsio_curve_2_value", setFsioCurve2Value},
 #if EFI_PROD_CODE
 #if EFI_VEHICLE_SPEED
+		//todo: This function become deprecated soon
 		{"mock_vehicle_speed", setMockVehicleSpeed},
 #endif /* EFI_VEHICLE_SPEED */
 #if EFI_IDLE_CONTROL
@@ -1257,7 +1198,7 @@ static void setValue(const char *paramStr, const char *valueStr) {
 		setTriggerEmulatorRPM(valueI);
 #endif /* EFI_EMULATE_POSITION_SENSORS */
 	} else if (strEqualCaseInsensitive(paramStr, "vvt_offset")) {
-		engineConfiguration->vvtOffset = valueF;
+		engineConfiguration->vvtOffsets[0] = valueF;
 	} else if (strEqualCaseInsensitive(paramStr, "vvt_mode")) {
 		engineConfiguration->vvtMode[0] = (vvt_mode_e)valueI;
 	} else if (strEqualCaseInsensitive(paramStr, "operation_mode")) {
@@ -1355,7 +1296,10 @@ void initSettings(void) {
 	addConsoleActionS("set_cj125_heater_pin", setCj125HeaterPin);
 	addConsoleActionS("set_trigger_sync_pin", setTriggerSyncPin);
 
+	addConsoleActionS("bench_clearpin", benchClearPin);
+	addConsoleActionS("bench_setpin", benchSetPin);
 	addConsoleActionS("readpin", readPin);
+	addConsoleAction("adc_report", printFullAdcReport);
 	addConsoleActionS("set_can_rx_pin", setCanRxPin);
 	addConsoleActionS("set_can_tx_pin", setCanTxPin);
 
@@ -1371,3 +1315,65 @@ void initSettings(void) {
 }
 
 #endif /* !EFI_UNIT_TEST */
+
+/**
+ * These should be not very long because these are displayed on the LCD as is
+ */
+const char* getConfigurationName(engine_type_e engineType) {
+	switch (engineType) {
+	case DEFAULT_FRANKENSO:
+		return "DEFAULT_FRANKENSO";
+	case DODGE_NEON_1995:
+		return "Neon95";
+	case FORD_ASPIRE_1996:
+		return "Aspire";
+	case NISSAN_PRIMERA:
+		return "Primera";
+	case HONDA_ACCORD_CD:
+		return "Accord3";
+	case HONDA_ACCORD_CD_TWO_WIRES:
+		return "Accord2";
+	case HONDA_ACCORD_1_24_SHIFTED:
+		return "Accord24sh";
+	case HONDA_ACCORD_CD_DIP:
+		return "HondaD";
+	case FORD_INLINE_6_1995:
+		return "Fordi6";
+	case GY6_139QMB:
+		return "Gy6139";
+	case MAZDA_MIATA_NB1:
+		return "MiataNB1";
+	case FORD_ESCORT_GT:
+		return "EscrtGT";
+	case CITROEN_TU3JP:
+		return "TU3JP";
+	case MITSU_4G93:
+		return "Mi4G93";
+	case MIATA_1990:
+		return "MX590";
+	case MIATA_1996:
+		return "MX596";
+	default:
+		return getEngine_type_e(engineType);
+	}
+}
+
+void setEngineType(int value DECLARE_ENGINE_PARAMETER_SUFFIX) {
+	{
+#if EFI_PROD_CODE
+		chibios_rt::CriticalSectionLocker csl;
+#endif /* EFI_PROD_CODE */
+
+		engineConfiguration->engineType = (engine_type_e)value;
+		resetConfigurationExt((engine_type_e)value PASS_ENGINE_PARAMETER_SUFFIX);
+		engine->resetEngineSnifferIfInTestMode();
+
+	#if EFI_INTERNAL_FLASH
+		writeToFlashNow();
+	#endif /* EFI_INTERNAL_FLASH */
+	}
+	incrementGlobalConfigurationVersion(PASS_ENGINE_PARAMETER_SIGNATURE);
+#if ! EFI_UNIT_TEST
+	doPrintConfiguration();
+#endif /* EFI_UNIT_TEST */
+}

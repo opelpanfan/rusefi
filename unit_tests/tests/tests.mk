@@ -3,15 +3,21 @@ TESTS_SRC_CPP = \
 	tests/trigger/test_trigger_decoder.cpp \
 	tests/trigger/test_trigger_noiseless.cpp \
 	tests/trigger/test_trigger_multi_sync.cpp \
+	tests/trigger/test_miata_na_tdc.cpp \
 	tests/trigger/test_cam_vvt_input.cpp \
 	tests/trigger/test_2jz_vvt.cpp \
 	tests/trigger/test_real_cranking_miata_NA.cpp \
+	tests/trigger/test_real_cranking_miata_na6.cpp \
+	tests/trigger/test_real_cranking_nissan_vq40.cpp \
+	tests/trigger/test_real_volkswagen.cpp \
+	tests/trigger/test_real_nb2_cranking.cpp \
+	tests/trigger/test_rpm_multiplier.cpp \
 	tests/trigger/test_quad_cam.cpp \
+	tests/trigger/test_nissan_vq_vvt.cpp \
 	tests/trigger/test_override_gaps.cpp \
 	tests/trigger/test_injection_scheduling.cpp \
 	tests/ignition_injection/injection_mode_transition.cpp \
 	tests/ignition_injection/test_startOfCrankingPrimingPulse.cpp \
-	tests/ignition_injection/test_miata_na6_real_cranking.cpp \
 	tests/ignition_injection/test_multispark.cpp \
 	tests/ignition_injection/test_ignition_scheduling.cpp \
 	tests/ignition_injection/test_fuelCut.cpp \
@@ -20,6 +26,7 @@ TESTS_SRC_CPP = \
 	tests/lua/test_lua_basic.cpp \
 	tests/lua/test_lua_hooks.cpp \
 	tests/sensor/test_cj125.cpp \
+	tests/test_change_engine_type.cpp \
 	tests/util/test_timer.cpp \
 	tests/system/test_periodic_thread_controller.cpp \
 	tests/test_util.cpp \
@@ -35,6 +42,7 @@ TESTS_SRC_CPP = \
 	tests/test_idle_controller.cpp \
 	tests/test_issue_898.cpp \
 	tests/test_etb.cpp \
+	tests/test_dc_motor.cpp \
 	tests/test_fan_control.cpp \
 	tests/test_vvt.cpp \
 	tests/test_launch.cpp \
@@ -76,4 +84,7 @@ TESTS_SRC_CPP = \
 	tests/test_gpio.cpp \
 	tests/test_limp.cpp \
 	tests/trigger/test_all_triggers.cpp \
+	tests/test_stepper.cpp \
+	tests/sensor/test_frequency_sensor.cpp \
+	tests/sensor/test_vehicle_speed.cpp \
 

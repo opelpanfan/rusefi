@@ -3,11 +3,12 @@
  * @author Andrey Belomutskiy, (c) 2012-2020
  */
 
-#include "engine_test_helper.h"
+#include "pch.h"
 #include "spark_logic.h"
 
 TEST(issues, issueOneCylinderSpecialCase968) {
 	WITH_ENGINE_TEST_HELPER(GY6_139QMB);
+	ENGINE(tdcMarkEnabled) = false;
 	// set injection_mode 1
 	engineConfiguration->injectionMode = IM_SEQUENTIAL;
 

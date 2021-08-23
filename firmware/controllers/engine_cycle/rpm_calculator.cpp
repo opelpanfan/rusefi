@@ -13,15 +13,10 @@
  * @author Andrey Belomutskiy, (c) 2012-2020
  */
 
-#include "globalaccess.h"
+#include "pch.h"
 #include "os_access.h"
-#include "engine.h"
-#include "rpm_calculator.h"
 
 #include "trigger_central.h"
-#include "engine_configuration.h"
-#include "engine_math.h"
-#include "perf_trace.h"
 #include "tooth_logger.h"
 
 #if EFI_PROD_CODE
@@ -81,8 +76,6 @@ int RpmCalculator::getRpm() const {
 }
 
 #if EFI_SHAFT_POSITION_INPUT
-
-EXTERN_ENGINE;
 
 RpmCalculator::RpmCalculator() :
 		StoredValueSensor(SensorType::Rpm, 0)
@@ -278,11 +271,14 @@ void rpmShaftPositionCallback(trigger_event_e ckpSignalType,
 
 				rpmState->setRpmValue(rpm > UNREALISTIC_RPM ? NOISY_RPM : rpm);
 			}
+		} else {
+			// we are here only once trigger is synchronized for the first time
+			// while transitioning  from 'spinning' to 'running'
+			engine->triggerCentral.triggerState.movePreSynchTimestamps(PASS_ENGINE_PARAMETER_SIGNATURE);
 		}
 
 		rpmState->onNewEngineCycle();
 	}
-
 
 #if EFI_SENSOR_CHART
 	// this 'index==0' case is here so that it happens after cycle callback so
@@ -294,21 +290,12 @@ void rpmShaftPositionCallback(trigger_event_e ckpSignalType,
 	}
 #endif /* EFI_SENSOR_CHART */
 
-	if (rpmState->isSpinningUp()) {
-		// we are here only once trigger is synchronized for the first time
-		// while transitioning  from 'spinning' to 'running'
-		// Replace 'normal' RPM with instant RPM for the initial spin-up period
-		engine->triggerCentral.triggerState.movePreSynchTimestamps(PASS_ENGINE_PARAMETER_SIGNATURE);
-	}
-
 	// Always update instant RPM even when not spinning up
-	engine->triggerCentral.triggerState.updateInstantRpm(&engine->triggerCentral.triggerFormDetails, nowNt PASS_ENGINE_PARAMETER_SUFFIX);
+	engine->triggerCentral.triggerState.updateInstantRpm(&engine->triggerCentral.triggerFormDetails, index, nowNt PASS_ENGINE_PARAMETER_SUFFIX);
 
 	if (rpmState->isSpinningUp()) {
 		float instantRpm = engine->triggerCentral.triggerState.getInstantRpm();
 
-		// validate instant RPM - we shouldn't skip the cranking state
-		instantRpm = minF(instantRpm, CONFIG(cranking.rpm) - 1);
 		rpmState->assignRpmValue(instantRpm);
 #if 0
 		efiPrintf("** RPM: idx=%d sig=%d iRPM=%d", index, ckpSignalType, instantRpm);
@@ -319,8 +306,6 @@ void rpmShaftPositionCallback(trigger_event_e ckpSignalType,
 float RpmCalculator::getTimeSinceEngineStart(efitick_t nowNt) const {
 	return engineStartTimer.getElapsedSeconds(nowNt);
 }
-
-static scheduling_s tdcScheduler[2];
 
 static char rpmBuffer[_MAX_FILLER];
 
@@ -352,7 +337,7 @@ static void onTdcCallback(Engine *engine) {
 void tdcMarkCallback(
 		uint32_t index0, efitick_t edgeTimestamp DECLARE_ENGINE_PARAMETER_SUFFIX) {
 	bool isTriggerSynchronizationPoint = index0 == 0;
-	if (isTriggerSynchronizationPoint && ENGINE(isEngineChartEnabled)) {
+	if (isTriggerSynchronizationPoint && ENGINE(isEngineChartEnabled) && ENGINE(tdcMarkEnabled)) {
 		// two instances of scheduling_s are needed to properly handle event overlap
 		int revIndex2 = getRevolutionCounter() % 2;
 		int rpm = GET_RPM();
@@ -361,7 +346,7 @@ void tdcMarkCallback(
 			angle_t tdcPosition = tdcPosition();
 			// we need a positive angle offset here
 			fixAngle(tdcPosition, "tdcPosition", CUSTOM_ERR_6553);
-			scheduleByAngle(&tdcScheduler[revIndex2], edgeTimestamp, tdcPosition,
+			scheduleByAngle(&engine->tdcScheduler[revIndex2], edgeTimestamp, tdcPosition,
 					{ onTdcCallback, engine } PASS_ENGINE_PARAMETER_SUFFIX);
 		}
 	}
@@ -410,7 +395,7 @@ efitick_t scheduleByAngle(scheduling_s *timer, efitick_t edgeTimestamp, angle_t 
 	int32_t delayNt = USF2NT(delayUs);
 	efitime_t delayedTime = edgeTimestamp + delayNt;
 
-	ENGINE(executor.scheduleByTimestampNt(timer, delayedTime, action));
+	ENGINE(executor.scheduleByTimestampNt("angle", timer, delayedTime, action));
 
 	return delayedTime;
 }

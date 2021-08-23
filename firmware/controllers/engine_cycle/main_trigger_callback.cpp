@@ -21,7 +21,8 @@
  * If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "global.h"
+#include "pch.h"
+
 #include "os_access.h"
 
 #if EFI_PRINTF_FUEL_DETAILS
@@ -31,39 +32,22 @@
 #if EFI_ENGINE_CONTROL && EFI_SHAFT_POSITION_INPUT
 
 #include "main_trigger_callback.h"
-#include "efi_gpio.h"
-#include "engine_math.h"
 #include "trigger_central.h"
 #include "spark_logic.h"
-#include "rpm_calculator.h"
-#include "engine_configuration.h"
-#include "interpolation.h"
 #include "advance_map.h"
-#include "allsensors.h"
 #include "cyclic_buffer.h"
 #include "fuel_math.h"
 #include "cdm_ion_sense.h"
-#include "engine_controller.h"
-#include "efi_gpio.h"
 #include "tooth_logger.h"
 #include "os_util.h"
 #include "local_version_holder.h"
 #include "event_queue.h"
-#include "engine.h"
-#include "perf_trace.h"
-#include "sensor.h"
 #include "injector_model.h"
 #if EFI_LAUNCH_CONTROL
 #include "launch_control.h"
 #endif
 
 #include "backup_ram.h"
-
-EXTERN_ENGINE;
-
-static const char *prevOutputName = nullptr;
-
-static InjectionEvent primeInjEvent;
 
 // todo: figure out if this even helps?
 //#if defined __GNUC__
@@ -180,6 +164,9 @@ void turnInjectionPinLow(InjectionEvent *event) {
 	EXPAND_Engine;
 #endif
 
+	engine->mostRecentTimeBetweenIgnitionEvents = nowNt - engine->mostRecentIgnitionEvent;
+	engine->mostRecentIgnitionEvent = nowNt;
+
 	event->isScheduled = false;
 	for (int i = 0;i<MAX_WIRES_COUNT;i++) {
 		InjectorOutputPin *output = event->outputs[i];
@@ -259,12 +246,12 @@ void InjectionEvent::onTriggerTooth(size_t trgEventIndex, int rpm, efitick_t now
 	// we are ignoring low RPM in order not to handle "engine was stopped to engine now running" transition
 	if (rpm > 2 * engineConfiguration->cranking.rpm) {
 		const char *outputName = outputs[0]->name;
-		if (prevOutputName == outputName
+		if (engine->prevOutputName == outputName
 				&& engineConfiguration->injectionMode != IM_SIMULTANEOUS
 				&& engineConfiguration->injectionMode != IM_SINGLE_POINT) {
 			warning(CUSTOM_OBD_SKIPPED_FUEL, "looks like skipped fuel event revCounter=%d %s", getRevolutionCounter(), outputName);
 		}
-		prevOutputName = outputName;
+		engine->prevOutputName = outputName;
 	}
 
 #if EFI_PRINTF_FUEL_DETAILS
@@ -300,7 +287,7 @@ void InjectionEvent::onTriggerTooth(size_t trgEventIndex, int rpm, efitick_t now
 
 	efitick_t startTime = scheduleByAngle(&signalTimerUp, nowNt, injectionStart.angleOffsetFromTriggerEvent, startAction PASS_ENGINE_PARAMETER_SUFFIX);
 	efitick_t turnOffTime = startTime + US2NT((int)durationUs);
-	engine->executor.scheduleByTimestampNt(&endOfInjectionEvent, turnOffTime, endAction);
+	engine->executor.scheduleByTimestampNt("inj", &endOfInjectionEvent, turnOffTime, endAction);
 
 #if EFI_UNIT_TEST
 		printf("scheduling injection angle=%.2f/delay=%.2f injectionDuration=%.2f\r\n", injectionStart.angleOffsetFromTriggerEvent, NT2US(startTime - nowNt), injectionDuration);
@@ -450,7 +437,7 @@ void mainTriggerCallback(uint32_t trgEventIndex, efitick_t edgeTimestamp DECLARE
 		}
 	}
 
-	if (trgEventIndex == (uint32_t)CONFIG(ignMathCalculateAtIndex)) {
+	if (trgEventIndex == 0) {
 		if (isAdcChannelValid(CONFIG(externalKnockSenseAdc))) {
 			float externalKnockValue = getVoltageDivided("knock", engineConfiguration->externalKnockSenseAdc PASS_ENGINE_PARAMETER_SUFFIX);
 			engine->knockLogic(externalKnockValue PASS_ENGINE_PARAMETER_SUFFIX);
@@ -481,7 +468,7 @@ static bool isPrimeInjectionPulseSkipped(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
  * See testStartOfCrankingPrimingPulse()
  */
 void startPrimeInjectionPulse(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
-	INJECT_ENGINE_REFERENCE(&primeInjEvent);
+	INJECT_ENGINE_REFERENCE(&engine->primeInjEvent);
 
 	// First, we need a protection against 'fake' ignition switch on and off (i.e. no engine started), to avoid repeated prime pulses.
 	// So we check and update the ignition switch counter in non-volatile backup-RAM
@@ -500,8 +487,8 @@ void startPrimeInjectionPulse(DECLARE_ENGINE_PARAMETER_SIGNATURE) {
 		ignSwitchCounter = -1;
 	// start prime injection if this is a 'fresh start'
 	if (ignSwitchCounter == 0) {
-		primeInjEvent.ownIndex = 0;
-		primeInjEvent.isSimultanious = true;
+		engine->primeInjEvent.ownIndex = 0;
+		engine->primeInjEvent.isSimultanious = true;
 
 		scheduling_s *sDown = &ENGINE(injectionEvents.elements[0]).endOfInjectionEvent;
 		// When the engine is hot, basically we don't need prime inj.pulse, so we use an interpolation over temperature (falloff).
