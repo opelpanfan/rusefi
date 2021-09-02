@@ -753,23 +753,23 @@ enable2ndByteCanID = false
 	curve = cltIdleRPMCurve, "Idle Target RPM"
       columnLabel = "Coolant", "RPM"
       xAxis       = -40, 120, 9
-      yAxis       =  0, 8000, 10
+      yAxis       = 0, 2400, 13
       xBins       = cltIdleRpmBins, coolant
       yBins       = cltIdleRpm, RPMValue
       gauge       = CLTGauge
 
 	curve = idleAdvanceCurve, "Idle Advance Angle"
       columnLabel = "RPM", "degrees"
-      xAxis       = 0, 8000, 10
-      yAxis       = -100, 100, 10
+      xAxis       = 0, 2400, 13
+      yAxis       = -100, 100, 11
       xBins       = idleAdvanceBins, RPMValue
       yBins       = idleAdvance
       gauge       = RPMGauge
 
 	curve = idleVeCurve, "Idle VE"
       columnLabel = "RPM", "%"
-      xAxis       = 0, 8000, 10
-      yAxis       = 0, 250, 10
+      xAxis       = 0, 2400, 13
+      yAxis       = 0, 250, 11
       xBins       = idleVeBins, RPMValue
       yBins       = idleVe
 #if LAMBDA
@@ -780,8 +780,8 @@ enable2ndByteCanID = false
     
 	curve = crankingAdvanceCurve, "Cranking Advance Angle"
       columnLabel = "RPM", "degrees"
-      xAxis       = 0, 8000, 10
-      yAxis       = -100, 100, 10
+      xAxis       = 0, 2400, 13
+      yAxis       = -100, 100, 11
       xBins       = crankingAdvanceBins, RPMValue
       yBins       = crankingAdvance
       gauge       = RPMGauge
@@ -1542,7 +1542,6 @@ menuDialog = main
 
 		subMenu = std_separator
 		subMenu = luaOutputs,			    "Lua PWM Outputs"
-		subMenu = luaAnalogInputs,  		"Lua Analog Inputs"
 
 		subMenu = std_separator
 		subMenu = tcuControls,			"Transmission Settings"
@@ -3305,10 +3304,7 @@ cmd_set_engine_type_default					= "@@TS_IO_TEST_COMMAND_char@@\x00\x31\x00\x00"
 		field = "use FSIO #5 for critical engine stop", useFSIO5ForCriticalIssueEngineStop
 		field = "#5",									fsioFormulas5
 
-		field = "use FSIO #6 for rev limiter", useFSIO6ForRevLimiter
 		field = "#6",									fsioFormulas6
-		field = "#7",									fsioFormulas7
-		field = "#8",									fsioFormulas8
 
 	dialog = fsioInputsDialog, "FSIO inputs"
 		field = "ADC #1",								fsioAdc1
@@ -3328,16 +3324,6 @@ cmd_set_engine_type_default					= "@@TS_IO_TEST_COMMAND_char@@\x00\x31\x00\x00"
 		field = "output #5", 							luaOutputPins6
 		field = "output #6", 							luaOutputPins7
 		field = "output #7", 							luaOutputPins8
-
-	dialog = luaAnalogInputs, "Lua Analog Inputs"
-		field = "Input #0", 							luaAnalogInputs1
-		field = "Input #1", 							luaAnalogInputs2
-		field = "Input #2", 							luaAnalogInputs3
-		field = "Input #3", 							luaAnalogInputs4
-		field = "Input #4", 							luaAnalogInputs5
-		field = "Input #5", 							luaAnalogInputs6
-		field = "Input #6", 							luaAnalogInputs7
-		field = "Input #7", 							luaAnalogInputs8
 
 	dialog = transmissionPanel
 		field = "TCU Enabled"		tcuEnabled
@@ -3384,6 +3370,7 @@ cmd_set_engine_type_default					= "@@TS_IO_TEST_COMMAND_char@@\x00\x31\x00\x00"
 ;Boost Closed Loop
 
          dialog = boostPidleft, ""
+		 	field = "Enable closed loop above",			minimumBoostClosedLoopMap, { isBoostControlEnabled && boostType == 1 }
             field = "P Gain", 	                         boostPid_pFactor, { isBoostControlEnabled && boostType == 1 }
 	        field = "I Gain",                            boostPid_iFactor, { isBoostControlEnabled && boostType == 1 }
 	        field = "D Gain",                            boostPid_dFactor, { isBoostControlEnabled && boostType == 1 }
