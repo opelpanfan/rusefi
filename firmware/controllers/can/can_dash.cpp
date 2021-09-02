@@ -103,6 +103,7 @@ void canDashboardBMWE90(CanCycle cycle);
 void canDashboardVagMqb(CanCycle cycle);
 void canDashboardNissanVQ(CanCycle cycle);
 void canDashboardGenesisCoupe(CanCycle cycle);
+void canDashboardLink(CanCycle cycle);
 
 void updateDash(CanCycle cycle) {
 
@@ -134,6 +135,9 @@ void updateDash(CanCycle cycle) {
 		break;
 	case CAN_BUS_GENESIS_COUPE:
 		canDashboardGenesisCoupe(cycle);
+		break;
+	case CAN_BUS_LINK:
+		canDashboardLink(cycle);
 		break;
 	default:
 		break;
@@ -1109,6 +1113,67 @@ void canDashboardHaltech(CanCycle cycle) {
 			msg[5] = 0x00;
 			msg[6] = 0x00;
 			msg[7] = 0x00;
+		}
+
+	}
+}
+
+void canDashboardLink(CanCycle cycle) {
+	
+	uint16_t tmp;
+
+	if (cycle.isInterval(CI::_20ms)) {
+		
+	}
+
+	if (cycle.isInterval(CI::_200ms)) {
+		
+		/* 0x370 + 2 = 5Hz rate */
+		{
+			CanTxMessage msg(0x370 + 2, 8);
+			tmp = (uint16_t)(Sensor::get(SensorType::BatteryVoltage).value_or(0)); 
+			/* BatteryVoltage */
+			msg[0] = (tmp >> 8);
+			msg[1] = (tmp & 0x00ff);
+			/* NULL */
+			msg[2] = 0;
+			msg[3] = 0;
+			msg[4] = 0;
+			msg[5] = 0;
+			/* BarometricPressure */
+			tmp = (uint16_t)(Sensor::get(SensorType::BarometricPressure).value_or(0));
+			msg[6] = (tmp >> 8);
+			msg[7] = (tmp & 0x00ff);
+		}
+		/* 0x3E0 + 0 = 5Hz rate */
+		{
+			CanTxMessage msg(0x3E0 + 0, 8);
+			tmp = (uint16_t)(Sensor::get(SensorType::Clt).value_or(0)); 
+			/* BatteryVoltage */
+			msg[0] = (tmp >> 8);
+			msg[1] = (tmp & 0x00ff);
+			/* BarometricPressure */
+			tmp = (uint16_t)(Sensor::get(SensorType::Iat).value_or(0));
+			msg[2] = (tmp >> 8);
+			msg[3] = (tmp & 0x00ff);
+			/* NULL */
+			msg[4] = 0;
+			msg[5] = 0;
+			msg[6] = 0;
+			msg[7] = 0;
+		}
+		/* 0x368 + 1 = 5Hz rate */
+		{
+			CanTxMessage msg(0x368 + 1, 8);
+			/* NULL */
+			msg[0] = 0;
+			msg[1] = 0;
+			msg[2] = 0;
+			msg[3] = 0;
+			msg[4] = 0;
+			msg[5] = 0;
+			msg[6] = 0;
+			msg[7] = 0;
 		}
 
 	}
