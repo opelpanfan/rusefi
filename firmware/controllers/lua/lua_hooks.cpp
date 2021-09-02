@@ -23,15 +23,19 @@ static int lua_efi_print(lua_State* l) {
 static int lua_readpin(lua_State* l) {
 	auto msg = luaL_checkstring(l, 1);
 #if EFI_PROD_CODE
-	readPin(msg);
+	brain_pin_e pin = parseBrainPin(msg);
+	if (pin == GPIO_INVALID) {
+		lua_pushnil(l);
+	} else {
+		int physicalValue = palReadPad(getHwPort("read", pin), getHwPin("read", pin));
+		lua_pushnumber(l, physicalValue);
+	}
 #endif
-	return 0;
+	return 1;
 }
 
-static int lua_getSensor(lua_State* l) {
-	auto sensorIndex = luaL_checkinteger(l, 1);
-
-	auto result = Sensor::get(static_cast<SensorType>(sensorIndex));
+static int getSensor(lua_State* l, SensorType type) {
+	auto result = Sensor::get(type);
 
 	if (result) {
 		// return value if valid
@@ -42,6 +46,20 @@ static int lua_getSensor(lua_State* l) {
 	}
 
 	return 1;
+}
+
+static int lua_getAuxAnalog(lua_State* l) {
+	auto sensorIndex = luaL_checkinteger(l, 1);
+
+	auto type = static_cast<SensorType>(sensorIndex + static_cast<int>(SensorType::Aux1));
+
+	return getSensor(l, type);
+}
+
+static int lua_getSensor(lua_State* l) {
+	auto sensorIndex = luaL_checkinteger(l, 1);
+
+	return getSensor(l, static_cast<SensorType>(sensorIndex));
 }
 
 static int lua_getSensorRaw(lua_State* l) {
@@ -290,7 +308,8 @@ static int lua_stopEngine(lua_State*) {
 
 void configureRusefiLuaHooks(lua_State* l) {
 	lua_register(l, "print", lua_efi_print);
-	lua_register(l, "readpin", lua_readpin);
+	lua_register(l, "readPin", lua_readpin);
+	lua_register(l, "getAuxAnalog", lua_getAuxAnalog);
 	lua_register(l, "getSensor", lua_getSensor);
 	lua_register(l, "getSensorRaw", lua_getSensorRaw);
 	lua_register(l, "hasSensor", lua_hasSensor);
