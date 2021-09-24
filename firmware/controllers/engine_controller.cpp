@@ -331,7 +331,6 @@ static void printAnalogInfo(void) {
 	printAnalogChannelInfo("AFR", engineConfiguration->afr.hwChannel);
 	printAnalogChannelInfo("MAP", engineConfiguration->map.sensor.hwChannel);
 	printAnalogChannelInfo("BARO", engineConfiguration->baroSensor.hwChannel);
-	printAnalogChannelInfo("extKno", engineConfiguration->externalKnockSenseAdc);
 
 	printAnalogChannelInfo("OilP", engineConfiguration->oilPressure.hwChannel);
 
@@ -497,14 +496,6 @@ static void initConfigActions(void) {
 	addConsoleActionI("get_short", getShort);
 	addConsoleActionI("get_byte", getByte);
 	addConsoleActionII("get_bit", getBit);
-}
-
-// todo: move this logic somewhere else?
-static void getKnockInfo(void) {
-	adc_channel_e hwChannel = engineConfiguration->externalKnockSenseAdc;
-	efiPrintf("externalKnockSenseAdc on ADC", getPinNameByAdcChannel("knock", hwChannel, pinNameBuffer));
-
-	engine->printKnockState();
 }
 #endif /* EFI_UNIT_TEST */
 
@@ -762,10 +753,6 @@ void initEngineContoller(DECLARE_ENGINE_PARAMETER_SUFFIX) {
 
 	initEgoAveraging(PASS_ENGINE_PARAMETER_SIGNATURE);
 
-	if (isAdcChannelValid(engineConfiguration->externalKnockSenseAdc)) {
-		addConsoleAction("knockinfo", getKnockInfo);
-	}
-
 #if EFI_PROD_CODE
 	addConsoleAction("reset_accel", resetAccel);
 #endif /* EFI_PROD_CODE */
@@ -785,7 +772,7 @@ void initEngineContoller(DECLARE_ENGINE_PARAMETER_SUFFIX) {
  * UNUSED_SIZE constants.
  */
 #ifndef RAM_UNUSED_SIZE
-#define RAM_UNUSED_SIZE 8000
+#define RAM_UNUSED_SIZE 3500
 #endif
 #ifndef CCM_UNUSED_SIZE
 #define CCM_UNUSED_SIZE 600

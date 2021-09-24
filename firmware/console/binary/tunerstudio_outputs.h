@@ -62,8 +62,8 @@ struct TunerStudioOutputChannels {
 	unsigned int unusedBit10 : 1; // bit 10
 	unsigned int clutchUpState : 1; // bit 11
 	unsigned int clutchDownState : 1; // bit 12
-	unsigned int knockEverIndicator : 1; // bit 13
-	unsigned int knockNowIndicator : 1; // bit 14
+	unsigned int unusedb13 : 1; // bit 13
+	unsigned int unusedb14 : 1; // bit 14
 	unsigned int brakePedalState : 1; // bit 15. 0 - not pressed, 1 = pressed
 	unsigned int toothLogReady : 1; // bit 16
 	unsigned int acSwitchState : 1; // bit 17. 0 - not pressed, 1 = pressed
@@ -281,7 +281,9 @@ struct TunerStudioOutputChannels {
 	scaled_voltage rawTps2Primary;		// 302
 	scaled_voltage rawTps2Secondary;	// 304
 
-	uint8_t unusedAtTheEnd[32]; // we have some unused bytes to allow compatible TS changes
+	scaled_channel<uint16_t> knockCount;
+
+	uint8_t unusedAtTheEnd[30]; // we have some unused bytes to allow compatible TS changes
 
 	// Temporary - will remove soon
 	TsDebugChannels* getDebugChannels() {
