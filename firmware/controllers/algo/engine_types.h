@@ -13,7 +13,7 @@
 /**
  * http://rusefi.com/wiki/index.php?title=Manual:Engine_Type
  */
-typedef enum {
+typedef enum __attribute__ ((__packed__)) {
 	DEFAULT_FRANKENSO = 0,
 
 	MIATA_PROTEUS_TCU = 1,
@@ -230,14 +230,16 @@ typedef enum {
 	TEST_100 = 100,
 	TEST_101 = 101,
 	TEST_102 = 102,
-   // todo: Technical debt: ENUM_32_BITS #3874
-	Force_4_bytes_size_engine_type = ENUM_32_BITS,
+
+    // java code generator handles this value in a special way
+    // also looks like 2 enums are either 1 byte or 4 bytes
+	Force_4_bytes_size_engine_type = 70000,
 } engine_type_e;
 
 /**
  * https://rusefi.com//wiki/index.php?title=Manual:Debug_fields
  */
-typedef enum {
+typedef enum __attribute__ ((__packed__)) {
 	DBG_0 = 0,
 	DBG_TPS_ACCEL = 1,
 	DBG_GPPWM = 2,
@@ -305,7 +307,6 @@ typedef enum {
 	DBG_VVT_3_PID = 50,
 	DBG_VVT_4_PID = 51,
 
-	Force_4_bytes_size_debug_mode_e = ENUM_32_BITS,
 } debug_mode_e;
 
 /**
@@ -526,8 +527,9 @@ typedef enum {
 	//
 	TT_UNUSED = 74, // this is used if we want to iterate over all trigger types
 
-	// todo: convert to ENUM_16_BITS? I can see 257 triggers but not 65K triggers
-	Force_4_bytes_size_trigger_type = ENUM_32_BITS,
+    // java code generator handles this value in a special way
+    // also looks like 2 enums are either 1 byte or 4 bytes
+	Force_4_bytes_size_trigger_type = 70000,
 } trigger_type_e; // TriggerProcessor.java has this "trigger_type_e" name hard-coded!
 
 
