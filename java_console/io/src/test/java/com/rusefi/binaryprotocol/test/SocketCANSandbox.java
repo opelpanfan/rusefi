@@ -5,32 +5,29 @@ import com.opensr5.ConfigurationImage;
 import com.rusefi.binaryprotocol.BinaryProtocol;
 import com.rusefi.io.LinkManager;
 import com.rusefi.io.serial.AbstractIoStream;
-import com.rusefi.io.stream.PCanIoStream;
+import com.rusefi.io.stream.SocketCANIoStream;
 
 import java.io.IOException;
 
 import static com.devexperts.logging.Logging.getLogging;
 
-/**
- * @see Elm327Sandbox
- */
-public class PCanSandbox {
+public class SocketCANSandbox {
     private static final Logging log = getLogging(PCanSandbox.class);
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        AbstractIoStream tsStream = PCanIoStream.getPCANIoStream();
+        AbstractIoStream tsStream = SocketCANIoStream.create();
         if (tsStream == null)
-            throw new IOException("No PCAN");
+            throw new IOException("No SocketCAN");
 
 /*
         for (int i = 0; i < 17; i++) {
             String signature = BinaryProtocol.getSignature(tsStream);
-            System.out.println("Got " + i + " " + signature + " signature via PCAN");
+            System.out.println("Got " + i + " " + signature + " signature via SocketCAN");
             if (signature == null || !signature.startsWith(Fields.PROTOCOL_SIGNATURE_PREFIX))
                 throw new IllegalStateException("Unexpected S " + signature);
         }
         log.info("****************************************");
-        log.info("*********  PCAN LOOKS GREAT  ***********");
+        log.info("******  SocketCAN LOOKS GREAT  *********");
         log.info("****************************************");
 */
         LinkManager linkManager = new LinkManager();
@@ -53,4 +50,3 @@ public class PCanSandbox {
 //        System.exit(0);
     }
 }
-

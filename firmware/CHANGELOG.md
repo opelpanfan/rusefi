@@ -25,6 +25,10 @@ Release template (copy/paste this for new release):
 
 ### Added
  - FasterEngineSpinUp should be enabled by default #4094
+ - ETB low limit is now configurable #4119
+
+### Fixed
+ - 36-1 trigger gaps #4132
 
 ## April 20202 Release - "Day 58"
 
