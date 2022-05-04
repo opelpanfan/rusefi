@@ -67,7 +67,7 @@
 #define HAL_VSS_USE_PAL TRUE
 
 #undef LED_CRITICAL_ERROR_BRAIN_PIN
-#define LED_CRITICAL_ERROR_BRAIN_PIN Gpio::G11
+#define LED_CRITICAL_ERROR_BRAIN_PIN Gpio::C11
 
 // Ignore USB VBUS pin (we're never a host, only a device)
 #define BOARD_OTG_NOVBUSSENS TRUE
