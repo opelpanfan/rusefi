@@ -15,11 +15,11 @@ typedef struct {
 
 void initWS2812();
 
-void clearWS2812One(uint32_t num);
-void clearWS2812All();
-void setWS2812One(uint32_t num, WS2812_RGB_t rgb_col);
-void setWS2812All(WS2812_RGB_t rgb_col);
-void setWS2812Brightness(uint8_t num);
+void clearWS2812One(uint32_t num, bool refresh);
+void clearWS2812All(bool refresh);
+void setWS2812One(uint32_t num, WS2812_RGB_t rgb_col, bool refresh);
+void setWS2812All(WS2812_RGB_t rgb_col, bool refresh);
+void setWS2812Brightness(uint8_t num, bool refresh);
 
 void calcBuf();
-
+uint32_t mapInt(uint32_t x, uint32_t in_min, uint32_t in_max, uint32_t out_min, uint32_t out_max);

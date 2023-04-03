@@ -1309,6 +1309,7 @@ void canDashboardAim(CanCycle cycle) {
 	// transmitStruct<Aim5fb>(0x5fb, false);
 	// transmitStruct<Aim5fc>(0x5fc, false);
 	// transmitStruct<Aim5fd>(0x5fd, false);
+
 }
 
 #endif // EFI_CAN_SUPPORT

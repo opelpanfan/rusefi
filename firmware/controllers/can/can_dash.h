@@ -7,5 +7,6 @@
 
 #pragma once
 #include "can.h"
+#include "ws2812.h"
 
 void updateDash(CanCycle cycle);

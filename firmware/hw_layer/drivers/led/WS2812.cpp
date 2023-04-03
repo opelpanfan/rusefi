@@ -56,71 +56,73 @@ void initWS2812()
 	pwmEnableChannel(&PWMD1, WS2812_TIM_CH, 0); //(WS2812_PWM_PERIOD/2)
 
 	//TEST FUNCTIONALITY
-	clearWS2812All();
-	setWS2812Brightness(5);
-	setWS2812All((WS2812_RGB_t){255, 0, 0});
-	setWS2812One(19,(WS2812_RGB_t){0, 0, 255});
-	setWS2812One(9,(WS2812_RGB_t){0, 255, 0});
-	clearWS2812One(18);
+	chThdSleepMilliseconds(100);
+	clearWS2812All(true);
+	setWS2812Brightness(5,true);
+	setWS2812All((WS2812_RGB_t){255, 0, 0},true);
+	setWS2812One(19,(WS2812_RGB_t){0, 0, 255},true);
+	setWS2812One(9,(WS2812_RGB_t){0, 255, 0},true);
+	clearWS2812One(18,true);
 }
 
 /**
  * Set one LEDs to 0 (off)
  */
-void clearWS2812One(uint32_t num)
+void clearWS2812One(uint32_t num, bool refresh)
 {
 	if (num < WS2812_LED_N)
 	{
 		WS2812_LED_BUF[num] = (WS2812_RGB_t){0, 0, 0};
 	}
-	calcBuf();
+	if(refresh)	calcBuf();
 }
 
 /**
  * Set all LEDs to 0 (off)
  */
-void clearWS2812All()
+void clearWS2812All(bool refresh)
 {
 	for (uint16_t num = 0; num < WS2812_LED_N; num++)
 	{
 		WS2812_LED_BUF[num] = (WS2812_RGB_t){0, 0, 0};
 	}
-	calcBuf();
+	if(refresh)	calcBuf();
 }
 
 /**
  * Set one LED (R, G, B values).
  */
-void setWS2812One(uint32_t num, WS2812_RGB_t rgb_col)
+void setWS2812One(uint32_t num, WS2812_RGB_t rgb_col, bool refresh)
 {
 	if (num < WS2812_LED_N)
 	{
 		WS2812_LED_BUF[num] = rgb_col;
 	}
-	calcBuf();
+	if(refresh)	calcBuf();
 }
 
 /**
  * Set all LEDs (R, G, B values).
  */
-void setWS2812All(WS2812_RGB_t rgb_col)
+void setWS2812All(WS2812_RGB_t rgb_col, bool refresh)
 {
 	for (uint16_t num = 0; num < WS2812_LED_N; num++)
 	{
 		WS2812_LED_BUF[num] = rgb_col;
 	}
-	calcBuf();
+	if(refresh)	calcBuf();
 }
 
 /**
  * Set all LEDs Brightness.
  */
-void setWS2812Brightness(uint8_t num)
+void setWS2812Brightness(uint8_t num, bool refresh)
 {
 	num = num >= 100 ? 100 : num;
 	num = num <= 0 ? 0 : num;
 	WS2812_BRIGHTNESS = num;
-	calcBuf();
+	
+	if(refresh)	calcBuf();
 }
 
 /**
@@ -169,6 +171,13 @@ void calcBuf()
 		WS2812_TIM_BUF[pos++] = ((led.blue & 0x02) != 0) ? WS2812_DUTYCYCLE_1 : WS2812_DUTYCYCLE_0;
 		WS2812_TIM_BUF[pos++] = ((led.blue & 0x01) != 0) ? WS2812_DUTYCYCLE_1 : WS2812_DUTYCYCLE_0;
 	}
+}
+
+/**
+ * Small helper to map value range to diferent range
+ */
+uint32_t mapInt(uint32_t x, uint32_t in_min, uint32_t in_max, uint32_t out_min, uint32_t out_max) {
+	return (uint32_t) ((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min);
 }
 
 #endif /* EFI_WS2812 */
